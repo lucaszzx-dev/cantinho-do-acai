@@ -1,122 +1,138 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+﻿import { useMemo, useState } from 'react'
+import { CategoryNav } from './components/CategoryNav'
+import { FloatingCart } from './components/FloatingCart'
+import { MonteSeuAcaiModal } from './components/MonteSeuAcaiModal'
+import { ProductDetailsModal } from './components/ProductDetailsModal'
+import { ProductSection } from './components/ProductSection'
+import { SearchBar } from './components/SearchBar'
+import { StoreHeader } from './components/StoreHeader'
+import { WelcomeBanner } from './components/WelcomeBanner'
+import { CartProvider } from './context/CartContext'
+import { CATEGORIES } from './data/categories'
+import { useSearch } from './hooks/useSearch'
+import { CartPage } from './pages/CartPage'
+import type { Product } from './types/domain'
 
-function App() {
-  const [count, setCount] = useState(0)
+function MenuPage() {
+  const [query, setQuery] = useState('')
+  const [view, setView] = useState<'menu' | 'cart'>('menu')
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [toast, setToast] = useState('')
+
+  const searchResults = useSearch(query)
+  const isSearching = query.trim().length > 0
+
+  const groupedProducts = useMemo(
+    () =>
+      CATEGORIES.map((category) => ({
+        category,
+        products: searchResults.filter(
+          (product) => product.category === category.id,
+        ),
+      })),
+    [searchResults],
+  )
+
+  const showToast = (message: string) => {
+    setToast(message)
+    window.setTimeout(() => setToast(''), 2200)
+  }
+
+  const handleChoose = (product: Product) => {
+    setSelectedProduct(product)
+  }
+
+  const closeModal = () => setSelectedProduct(null)
+
+  const handleAdded = () => {
+    showToast('Item adicionado ao carrinho 💜')
+  }
+
+  const handleCategorySelect = (id: string) => {
+    setQuery('')
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  if (view === 'cart') {
+    return (
+      <div className="page">
+        <CartPage onBack={() => setView('menu')} />
+      </div>
+    )
+  }
+
+  const hasResults = searchResults.length > 0
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="page">
+      <StoreHeader />
+      <main className="page__main">
+        <WelcomeBanner />
+        <SearchBar value={query} onChange={setQuery} />
+        {!isSearching && <CategoryNav categories={CATEGORIES} onSelect={handleCategorySelect} />}
 
-      <div className="ticks"></div>
+        {isSearching ? (
+          hasResults ? (
+            <div className="product-grid">
+              {searchResults.map((product) => (
+                <ProductSection
+                  key={product.id}
+                  category={{ id: product.category, name: '' }}
+                  products={[product]}
+                  onChoose={handleChoose}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="search-empty">
+              <span className="search-empty__icon" aria-hidden="true">🍧</span>
+              <p className="search-empty__title">Nenhum item encontrado</p>
+              <p className="search-empty__text">
+                Tente buscar por outro nome, sabor ou categoria.
+              </p>
+            </div>
+          )
+        ) : (
+          groupedProducts.map(({ category, products }) => (
+            <ProductSection
+              key={category.id}
+              category={category}
+              products={products}
+              onChoose={handleChoose}
+            />
+          ))
+        )}
+      </main>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <FloatingCart onOpen={() => setView('cart')} />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      {selectedProduct?.category === 'monte-seu-acai' ? (
+        <MonteSeuAcaiModal
+          product={selectedProduct}
+          onClose={closeModal}
+          onAdded={handleAdded}
+        />
+      ) : selectedProduct ? (
+        <ProductDetailsModal
+          product={selectedProduct}
+          onClose={closeModal}
+          onAdded={handleAdded}
+        />
+      ) : null}
+
+      {toast && (
+        <div className="toast" role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
+    </div>
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <CartProvider>
+      <MenuPage />
+    </CartProvider>
+  )
+}
