@@ -23,7 +23,5 @@ export function useStoreStatus(): StoreStatusResult {
     return { status: 'unknown', label: schedule.value }
   }
 
-  return schedule.openNow
-    ? { status: 'open', label: 'Aberto agora' }
-    : { status: 'closed', label: `Abre às ${schedule.opensAt}` }
+  return { status: 'unknown', label: schedule.value }
 }

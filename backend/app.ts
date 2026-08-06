@@ -45,7 +45,7 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
   })
   app.get('/api/admin/store', async () => repository.getStore())
   app.patch('/api/admin/store', async (request) => {
-    const input = z.object({ name: z.string().min(2).optional(), city: z.string().min(2).optional(), tagline: z.string().min(2).optional(), whatsappNumber: z.string().min(8).optional(), deliveryMode: z.string().min(2).optional(), minOrder: z.number().nonnegative().optional() }).parse(request.body)
+    const input = z.object({ name: z.string().min(2).optional(), city: z.string().min(2).optional(), tagline: z.string().min(2).optional(), whatsappNumber: z.string().min(8).optional(), deliveryMode: z.string().min(2).optional(), minOrder: z.number().nonnegative().optional(), schedule: z.object({ override: z.enum(['auto', 'open', 'closed']).optional(), message: z.string().max(120).optional(), days: z.record(z.string(), z.object({ enabled: z.boolean(), opensAt: z.string().regex(/^\d\d:\d\d$/), closesAt: z.string().regex(/^\d\d:\d\d$/) })).optional() }).optional() }).parse(request.body)
     const [store] = await db.update(storeConfig).set({ ...input, ...(input.minOrder === undefined ? {} : { minOrderCents: Math.round(input.minOrder * 100) }), updatedAt: new Date() }).where(eq(storeConfig.id, 'default')).returning()
     return store
   })

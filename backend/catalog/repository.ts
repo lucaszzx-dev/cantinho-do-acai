@@ -1,6 +1,7 @@
 import { asc, eq } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { categories, optionGroups, productOptions, products, productVariants, storeConfig } from '../db/schema.js'
+import { storeStatus, type Schedule } from '../store-status.js'
 
 export type CatalogRepository = {
   getStore(): Promise<unknown>
@@ -20,7 +21,7 @@ export const postgresCatalogRepository: CatalogRepository = {
   async getStore() {
     const [store] = await db.select().from(storeConfig).limit(1)
     if (!store) return undefined
-    return { ...store, minOrder: cents(store.minOrderCents), minOrderCents: undefined }
+    return { ...store, minOrder: cents(store.minOrderCents), minOrderCents: undefined, operational: storeStatus(store.schedule as Schedule) }
   },
   async getCategories() {
     return db.select({ id: categories.id, slug: categories.slug, name: categories.name, subtitle: categories.subtitle }).from(categories).where(eq(categories.active, true)).orderBy(asc(categories.sortOrder))

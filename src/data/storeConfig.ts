@@ -22,11 +22,10 @@ export const STORE = {
    */
   schedule: {
     label: 'Horário de funcionamento',
-    value: 'Consulte o WhatsApp',
+    value: '18:00 às 21:00 — dias pendentes de confirmação',
     pending: true,
-    openNow: true,
-    opensAt: '15:00',
-    closesAt: '23:00',
+    override: 'auto',
+    days: {},
   },
   /** MOCK — pending official store address. */
   address: {
