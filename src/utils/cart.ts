@@ -1,4 +1,4 @@
-﻿import type { CartItem } from '../types/domain'
+import type { CartItem } from '../types/domain'
 
 export function itemSubtotal(item: CartItem): number {
   return item.unitPrice * item.quantity

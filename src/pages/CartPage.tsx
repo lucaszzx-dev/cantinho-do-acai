@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { CartLineItem } from '../components/CartLineItem'
 import { CheckoutForm } from '../components/CheckoutForm'
 import { useCart } from '../hooks/useCart'
@@ -108,7 +108,8 @@ export function CartPage({ onBack }: CartPageProps) {
                   {items.map((item) => (
                     <li key={item.uid} className="order-review__row">
                       <span className="order-review__name">
-                        {item.quantity}x {item.name}
+                        {item.quantity}x {item.productName}
+                        {item.variantName ? ` (${item.variantName})` : ''}
                       </span>
                       <span className="order-review__price">
                         {formatCurrency(item.unitPrice)}

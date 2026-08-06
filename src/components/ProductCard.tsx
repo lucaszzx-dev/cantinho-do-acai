@@ -1,4 +1,4 @@
-﻿import type { Product } from '../types/domain'
+import type { Product } from '../types/domain'
 import { formatCurrency } from '../utils/format'
 import { ProductImage } from './ProductImage'
 
@@ -29,7 +29,9 @@ export function ProductCard({ product, onChoose }: ProductCardProps) {
               className="button button--primary product-card__choose"
               onClick={() => onChoose(product)}
             >
-              {product.category === 'monte-seu-acai' ? 'Montar' : 'Escolher'}
+              {product.variants.length > 0 || product.optionGroups.length > 0
+                ? 'Montar'
+                : 'Escolher'}
             </button>
           ) : (
             <span className="product-card__unavailable">Indisponível</span>

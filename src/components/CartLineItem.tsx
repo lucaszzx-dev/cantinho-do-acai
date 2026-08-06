@@ -1,10 +1,23 @@
-﻿import type { CartItem } from '../types/domain'
+import type { CartItem } from '../types/domain'
 import { useCart } from '../hooks/useCart'
 import { formatCurrency } from '../utils/format'
 import { itemSubtotal } from '../utils/cart'
+import { PRODUCTS } from '../data/products'
 
 export function CartLineItem({ item }: { item: CartItem }) {
   const { increaseQuantity, decreaseQuantity, removeItem } = useCart()
+  const product = PRODUCTS.find((p) => p.id === item.productId)
+
+  const optionLabels: string[] = []
+  if (item.variantName) optionLabels.push(item.variantName)
+  for (const [groupId, ids] of Object.entries(item.selections)) {
+    const group = product?.optionGroups.find((g) => g.id === groupId)
+    if (!group) continue
+    for (const id of ids) {
+      const opt = group.options.find((o) => o.id === id)
+      if (opt) optionLabels.push(opt.name)
+    }
+  }
 
   return (
     <li className="cart-line">
@@ -13,27 +26,25 @@ export function CartLineItem({ item }: { item: CartItem }) {
       </div>
       <div className="cart-line__content">
         <div className="cart-line__top">
-          <p className="cart-line__name">{item.name}</p>
+          <p className="cart-line__name">{item.productName}</p>
           <button
             type="button"
             className="cart-line__remove"
-            aria-label={`Remover ${item.name}`}
+            aria-label={`Remover ${item.productName}`}
             onClick={() => removeItem(item.uid)}
           >
             ✕
           </button>
         </div>
-        {item.extras.length > 0 && (
-          <p className="cart-line__extras">
-            {item.extras.map((extra) => extra.label).join(', ')}
-          </p>
+        {optionLabels.length > 0 && (
+          <p className="cart-line__extras">{optionLabels.join(' · ')}</p>
         )}
         <div className="cart-line__bottom">
           <div className="quantity-stepper" aria-label="Quantidade">
             <button
               type="button"
               className="quantity-stepper__button"
-              aria-label={`Diminuir quantidade de ${item.name}`}
+              aria-label={`Diminuir quantidade de ${item.productName}`}
               onClick={() => decreaseQuantity(item.uid)}
             >
               −
@@ -44,7 +55,7 @@ export function CartLineItem({ item }: { item: CartItem }) {
             <button
               type="button"
               className="quantity-stepper__button"
-              aria-label={`Aumentar quantidade de ${item.name}`}
+              aria-label={`Aumentar quantidade de ${item.productName}`}
               onClick={() => increaseQuantity(item.uid)}
             >
               +

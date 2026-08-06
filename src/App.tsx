@@ -1,7 +1,7 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CategoryNav } from './components/CategoryNav'
 import { FloatingCart } from './components/FloatingCart'
-import { MonteSeuAcaiModal } from './components/MonteSeuAcaiModal'
+import { ProductConfigurator } from './components/ProductConfigurator'
 import { ProductDetailsModal } from './components/ProductDetailsModal'
 import { ProductSection } from './components/ProductSection'
 import { SearchBar } from './components/SearchBar'
@@ -83,6 +83,8 @@ function MenuPage() {
   }
 
   const hasResults = searchResults.length > 0
+  const hasConfig = (p: Product) =>
+    p.variants.length > 0 || p.optionGroups.length > 0
 
   return (
     <div className="page">
@@ -135,19 +137,20 @@ function MenuPage() {
 
       <FloatingCart onOpen={() => setView('cart')} />
 
-      {selectedProduct?.category === 'monte-seu-acai' ? (
-        <MonteSeuAcaiModal
-          product={selectedProduct}
-          onClose={closeModal}
-          onAdded={handleAdded}
-        />
-      ) : selectedProduct ? (
-        <ProductDetailsModal
-          product={selectedProduct}
-          onClose={closeModal}
-          onAdded={handleAdded}
-        />
-      ) : null}
+      {selectedProduct &&
+        (hasConfig(selectedProduct) ? (
+          <ProductConfigurator
+            product={selectedProduct}
+            onClose={closeModal}
+            onAdded={handleAdded}
+          />
+        ) : (
+          <ProductDetailsModal
+            product={selectedProduct}
+            onClose={closeModal}
+            onAdded={handleAdded}
+          />
+        ))}
 
       {toast && (
         <div className="toast" role="status" aria-live="polite">

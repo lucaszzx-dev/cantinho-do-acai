@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Project-specific
+.pnpm-store/
+public/acaiproject/
+_fix_files.js

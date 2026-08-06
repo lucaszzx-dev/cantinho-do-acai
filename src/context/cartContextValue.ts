@@ -1,4 +1,4 @@
-﻿import { createContext } from 'react'
+import { createContext } from 'react'
 import type { CartItem } from '../types/domain'
 
 export type AddItemInput = Omit<CartItem, 'uid' | 'quantity'> & { quantity?: number }

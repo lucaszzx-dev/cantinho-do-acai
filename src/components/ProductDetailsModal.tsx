@@ -1,4 +1,4 @@
-﻿import { useState } from 'react'
+import { useState } from 'react'
 import { useCart } from '../hooks/useCart'
 import type { Product } from '../types/domain'
 import { formatCurrency } from '../utils/format'
@@ -18,11 +18,12 @@ export function ProductDetailsModal({ product, onClose, onAdded }: ProductDetail
   const handleAdd = () => {
     addItem({
       productId: product.id,
-      name: product.name,
+      productName: product.name,
+      productImage: product.image,
+      category: product.category,
+      selections: {},
       unitPrice: product.price,
       quantity,
-      extras: [],
-      fromPrice: !!product.fromPrice,
     })
     onAdded()
     onClose()
