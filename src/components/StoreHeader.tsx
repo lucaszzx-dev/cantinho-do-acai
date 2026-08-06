@@ -2,6 +2,7 @@
 import { useStoreStatus } from '../hooks/useStoreStatus'
 import { formatCurrency } from '../utils/format'
 import { buildWhatsAppLink } from '../utils/whatsapp'
+import { StoreLogo } from './StoreLogo'
 
 export function StoreHeader() {
   const { status, label } = useStoreStatus()
@@ -15,9 +16,7 @@ export function StoreHeader() {
   return (
     <header className="store-header">
       <div className="store-header__inner">
-        <div className="store-header__logo" aria-hidden="true">
-          <span>🍧</span>
-        </div>
+        <StoreLogo className="store-header__logo" />
         <div className="store-header__info">
           <h1 className="store-header__name">{STORE.name}</h1>
           <p className="store-header__city">
