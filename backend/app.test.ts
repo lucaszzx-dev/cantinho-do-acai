@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { buildApp } from './app.js'
 import type { CatalogRepository } from './catalog/repository.js'
 import { PRODUCTS } from '../src/data/products'
+import { normalizePhone } from './customers.js'
 
 const product = { id: 'acai', slug: 'acai', name: 'Açaí', category: 'monte-seu-acai', available: true, price: 17.9, fromPrice: true, variants: [{ id: '300ml', name: '300ml', price: 17.9 }], optionGroups: [{ id: 'extras', label: 'Extras', type: 'multi', required: false, options: [{ id: 'bis', name: 'Bis', price: 3 }] }] }
 const repo: CatalogRepository = { getStore: async () => ({ name: 'Cantinho' }), getCategories: async () => [{ id: 'monte-seu-acai', name: 'Monte Seu Açaí' }], getProducts: async () => [product], getProductBySlug: async (slug) => slug === 'acai' ? product : undefined }
@@ -18,5 +19,11 @@ describe('seed identities', () => {
   it('creates unique database identities for repeated variant names', () => {
     const ids = PRODUCTS.flatMap((item) => item.variants.map((variant) => `${item.id}:${variant.id}`))
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+describe('customer phone normalization', () => {
+  it('keeps a unique digits-only phone identity', () => {
+    expect(normalizePhone('(11) 9 8016-9607')).toBe('11980169607')
   })
 })

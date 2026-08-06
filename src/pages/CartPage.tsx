@@ -7,6 +7,7 @@ import type { CheckoutData } from '../types/domain'
 import { cartTotal } from '../utils/cart'
 import { formatCurrency } from '../utils/format'
 import { buildOrderMessage, buildWhatsAppLink } from '../utils/whatsapp'
+import { saveCustomerSession, type CustomerSession } from '../api/customer'
 
 interface CartPageProps {
   onBack: () => void
@@ -22,17 +23,23 @@ const EMPTY_CHECKOUT: CheckoutData = {
   notes: '',
   paymentMethod: '',
 }
+const CUSTOMER_KEY = 'cantinho-do-acai-customer'
+
+function loadCustomer(): CustomerSession | null {
+  try { const raw = localStorage.getItem(CUSTOMER_KEY); return raw ? JSON.parse(raw) as CustomerSession : null } catch { return null }
+}
 
 export function CartPage({ onBack }: CartPageProps) {
   const { items, clearCart } = useCart()
-  const [checkout, setCheckout] = useState<CheckoutData>(EMPTY_CHECKOUT)
+  const [customer, setCustomer] = useState<CustomerSession | null>(loadCustomer)
+  const [checkout, setCheckout] = useState<CheckoutData>(() => ({ ...EMPTY_CHECKOUT, name: loadCustomer()?.name ?? '', phone: loadCustomer()?.phone ?? '' }))
   const [error, setError] = useState('')
 
   const total = cartTotal(items)
   const missing = Math.max(0, STORE.minOrder - total)
   const canFinalize = total >= STORE.minOrder
 
-  const handleFinalize = () => {
+  const handleFinalize = async () => {
     if (!canFinalize) return
     if (!checkout.name.trim() || !checkout.phone.trim()) {
       setError('Preencha nome e telefone para continuar.')
@@ -47,6 +54,13 @@ export function CartPage({ onBack }: CartPageProps) {
       return
     }
     setError('')
+    try {
+      const session = await saveCustomerSession(checkout.name.trim(), checkout.phone)
+      localStorage.setItem(CUSTOMER_KEY, JSON.stringify(session))
+      setCustomer(session)
+    } catch {
+      // The order remains available when the convenience profile API is offline.
+    }
     const message = buildOrderMessage(items, checkout)
     window.open(buildWhatsAppLink(message), '_blank')
     clearCart()
@@ -98,6 +112,12 @@ export function CartPage({ onBack }: CartPageProps) {
 
           {canFinalize ? (
             <>
+              {customer && (
+                <div className="customer-session">
+                  <span>Pedido como <strong>{customer.name}</strong></span>
+                  <button type="button" onClick={() => { localStorage.removeItem(CUSTOMER_KEY); setCustomer(null); setCheckout(EMPTY_CHECKOUT) }}>Sair</button>
+                </div>
+              )}
               <CheckoutForm value={checkout} onChange={setCheckout} />
 
               <section className="checkout-block" aria-labelledby="block-revisao">

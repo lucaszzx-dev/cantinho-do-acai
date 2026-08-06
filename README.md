@@ -24,3 +24,7 @@ store configuration. The idempotent seed imports the existing frontend catalog,
 including its explicitly marked PENDING/MOCK store schedule, address, payment
 methods and delivery rules. The frontend requests the public API first and uses
 the current local catalog only if the API is unavailable.
+
+`/admin` is the initial operational area for product availability/order,
+categories and core store configuration. Customer convenience sessions use name
+and normalized phone only; they are not authentication.

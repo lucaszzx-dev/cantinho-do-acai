@@ -15,6 +15,9 @@ const imgAcai11 = '/products/acai11.avif'
 const imgAgua = '/products/agua.avif'
 const imgAguaGas = '/products/aguagas.avif'
 const imgFondue = '/products/fondue.jpeg'
+const imgCopoDoceDeLeite = '/products/copo-doce-de-leite.jpeg'
+const imgCopoChocolateAmendoim = '/products/copo-chocolate-amendoim.jpeg'
+const imgCopoMorangoUva = '/products/copo-morango-uva.jpeg'
 
 const DESCARVEIS = {
   id: 'descartaveis',
@@ -262,6 +265,7 @@ export const PRODUCTS: Product[] = [
     id: 'copo-doce-de-leite',
     slug: 'copo-da-felicidade-doce-de-leite',
     name: 'Copo da Felicidade Doce de Leite',
+    image: imgCopoDoceDeLeite,
     price: 17,
     fromPrice: false,
     category: 'copo-da-felicidade',
@@ -273,6 +277,7 @@ export const PRODUCTS: Product[] = [
     id: 'copo-chocolate-amendoim',
     slug: 'copo-da-felicidade-chocolate-amendoim',
     name: 'Copo da Felicidade Creme de Chocolate com Amendoim',
+    image: imgCopoChocolateAmendoim,
     price: 17,
     fromPrice: false,
     category: 'copo-da-felicidade',
@@ -284,6 +289,7 @@ export const PRODUCTS: Product[] = [
     id: 'copo-premium-morango-uva',
     slug: 'copo-da-felicidade-premium-morangos-e-uva',
     name: 'Copo da Felicidade Premium Morangos e Uva',
+    image: imgCopoMorangoUva,
     price: 18,
     fromPrice: false,
     category: 'copo-da-felicidade',

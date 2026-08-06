@@ -14,6 +14,7 @@ import { catalogApi } from './api/catalog'
 import { useSearch } from './hooks/useSearch'
 import { CartPage } from './pages/CartPage'
 import type { Product } from './types/domain'
+import { AdminPage } from './pages/AdminPage'
 
 function MenuPage() {
   const [query, setQuery] = useState('')
@@ -174,6 +175,7 @@ function MenuPage() {
 }
 
 export default function App() {
+  if (window.location.pathname === '/admin') return <AdminPage />
   return (
     <CartProvider>
       <MenuPage />
