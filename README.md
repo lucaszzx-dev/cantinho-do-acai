@@ -1,32 +1,26 @@
-# React + TypeScript + Vite
+# Cantinho do Açaí
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React/Vite frontend plus a Fastify, PostgreSQL and Drizzle catalog API. Product
+prices are stored as integer cents in PostgreSQL, avoiding floating-point money
+errors; API DTOs expose prices in reais to preserve the current frontend API.
 
-Currently, two official plugins are available:
+## Local setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Copy `.env.example` to `.env` and adjust values if required.
+2. Run `docker compose up -d` and wait for PostgreSQL to be healthy.
+3. Run `pnpm install`, `pnpm db:migrate`, then `pnpm db:seed`.
+4. In one terminal run `pnpm dev:api`; in another run `pnpm dev`.
 
-## React Compiler
+Frontend: `http://localhost:5173`. API: `http://localhost:3000`; health check:
+`/health`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Commands
 
-## Expanding the Oxlint configuration
+`pnpm build`, `pnpm lint`, `pnpm test`, `pnpm db:generate`, `pnpm db:migrate`,
+and `pnpm db:seed` are available from the repository root.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The schema contains categories, products, variants, option groups, options and
+store configuration. The idempotent seed imports the existing frontend catalog,
+including its explicitly marked PENDING/MOCK store schedule, address, payment
+methods and delivery rules. The frontend requests the public API first and uses
+the current local catalog only if the API is unavailable.

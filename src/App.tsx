@@ -9,6 +9,8 @@ import { StoreHeader } from './components/StoreHeader'
 import { WelcomeBanner } from './components/WelcomeBanner'
 import { CartProvider } from './context/CartContext'
 import { CATEGORIES } from './data/categories'
+import { PRODUCTS } from './data/products'
+import { catalogApi } from './api/catalog'
 import { useSearch } from './hooks/useSearch'
 import { CartPage } from './pages/CartPage'
 import type { Product } from './types/domain'
@@ -19,29 +21,38 @@ function MenuPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [toast, setToast] = useState('')
   const [activeId, setActiveId] = useState('')
+  const [categories, setCategories] = useState(CATEGORIES)
+  const [products, setProducts] = useState(PRODUCTS)
+  const [catalogError, setCatalogError] = useState(false)
 
   const mainRef = useRef<HTMLElement>(null)
 
-  const searchResults = useSearch(query)
+  const searchResults = useSearch(query, products)
   const isSearching = query.trim().length > 0
 
   const groupedProducts = useMemo(
     () =>
-      CATEGORIES.map((category) => ({
+      categories.map((category) => ({
         category,
         products: searchResults.filter(
           (product) => product.category === category.id,
         ),
       })),
-    [searchResults],
+    [categories, searchResults],
   )
+
+  useEffect(() => {
+    Promise.all([catalogApi.categories(), catalogApi.products()])
+      .then(([apiCategories, apiProducts]) => { setCategories(apiCategories); setProducts(apiProducts) })
+      .catch(() => setCatalogError(true))
+  }, [])
 
   useEffect(() => {
     if (view !== 'menu' || isSearching) return
     const onScroll = () => {
       const offset = 120
       let current = ''
-      for (const category of CATEGORIES) {
+      for (const category of categories) {
         const element = document.getElementById(category.id)
         if (element && element.getBoundingClientRect().top <= offset) {
           current = category.id
@@ -52,7 +63,7 @@ function MenuPage() {
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [view, isSearching])
+  }, [view, isSearching, categories])
 
   const showToast = (message: string) => {
     setToast(message)
@@ -91,10 +102,11 @@ function MenuPage() {
       <StoreHeader />
       <main ref={mainRef} className="page__main">
         <WelcomeBanner />
+        {catalogError && <p className="catalog-notice">Catálogo local temporário em uso.</p>}
         <SearchBar value={query} onChange={setQuery} />
         {!isSearching && (
           <CategoryNav
-            categories={CATEGORIES}
+            categories={categories}
             activeId={activeId}
             onSelect={handleCategorySelect}
           />
