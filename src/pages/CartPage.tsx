@@ -63,7 +63,9 @@ export function CartPage({ onBack }: CartPageProps) {
 
       {items.length === 0 ? (
         <div className="cart-empty">
-          <span className="cart-empty__icon" aria-hidden="true">🛒</span>
+          <span className="cart-empty__icon" aria-hidden="true">
+            🛒
+          </span>
           <p className="cart-empty__title">Seu carrinho está vazio</p>
           <p className="cart-empty__text">
             Adicione produtos ao carrinho para montar seu pedido.
@@ -87,7 +89,7 @@ export function CartPage({ onBack }: CartPageProps) {
             </div>
             {missing > 0 ? (
               <p className="cart-summary__warning" role="alert">
-                Faltam {formatCurrency(missing)} para atingir o pedido mínimo.
+                Faltam {formatCurrency(missing)} para o pedido mínimo.
               </p>
             ) : (
               <p className="cart-summary__ok">Pedido mínimo atingido ✔</p>
@@ -95,7 +97,31 @@ export function CartPage({ onBack }: CartPageProps) {
           </div>
 
           {canFinalize ? (
-            <CheckoutForm value={checkout} onChange={setCheckout} />
+            <>
+              <CheckoutForm value={checkout} onChange={setCheckout} />
+
+              <section className="checkout-block" aria-labelledby="block-revisao">
+                <h3 className="checkout-block__title" id="block-revisao">
+                  Revisão do pedido
+                </h3>
+                <ul className="order-review">
+                  {items.map((item) => (
+                    <li key={item.uid} className="order-review__row">
+                      <span className="order-review__name">
+                        {item.quantity}x {item.name}
+                      </span>
+                      <span className="order-review__price">
+                        {formatCurrency(item.unitPrice)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="order-review__total">
+                  <span>Total</span>
+                  <strong>{formatCurrency(total)}</strong>
+                </div>
+              </section>
+            </>
           ) : (
             <div className="cart-minimum">
               <p>
@@ -110,20 +136,30 @@ export function CartPage({ onBack }: CartPageProps) {
               {error}
             </p>
           )}
-
-          <div className="cart-page__actions">
-            <button
-              type="button"
-              className="button button--whatsapp button--lg"
-              onClick={handleFinalize}
-              disabled={!canFinalize}
-            >
-              Finalizar pedido no WhatsApp
-            </button>
-          </div>
         </>
+      )}
+
+      {items.length > 0 && (
+        <div className="checkout-bar">
+          <div className="checkout-bar__info">
+            <span className="checkout-bar__label">Total</span>
+            <strong className="checkout-bar__total">{formatCurrency(total)}</strong>
+            {missing > 0 && (
+              <span className="checkout-bar__missing">
+                faltam {formatCurrency(missing)}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="button button--whatsapp checkout-bar__cta"
+            onClick={handleFinalize}
+            disabled={!canFinalize}
+          >
+            Finalizar no WhatsApp
+          </button>
+        </div>
       )}
     </div>
   )
 }
-

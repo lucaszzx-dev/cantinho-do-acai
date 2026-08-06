@@ -1,11 +1,16 @@
 ﻿import { STORE } from '../data/storeConfig'
+import { useStoreStatus } from '../hooks/useStoreStatus'
 import { formatCurrency } from '../utils/format'
 import { buildWhatsAppLink } from '../utils/whatsapp'
 
 export function StoreHeader() {
+  const { status, label } = useStoreStatus()
   const waLink = buildWhatsAppLink(
     `Olá! Vim pelo cardápio digital do ${STORE.name}. Gostaria de fazer um pedido.`,
   )
+
+  const statusClass =
+    status === 'open' ? 'chip--open' : status === 'closed' ? 'chip--closed' : 'chip--pending'
 
   return (
     <header className="store-header">
@@ -15,12 +20,14 @@ export function StoreHeader() {
         </div>
         <div className="store-header__info">
           <h1 className="store-header__name">{STORE.name}</h1>
-          <p className="store-header__city">{STORE.city}</p>
+          <p className="store-header__city">
+            {STORE.city} · {STORE.deliveryMode}
+          </p>
           <div className="store-header__chips">
-            <span className="chip chip--info" title="Horário ainda não confirmado oficialmente">
-              {STORE.hours.value}
+            <span className={`chip ${statusClass}`}>
+              <span className="chip__dot" aria-hidden="true" />
+              {label}
             </span>
-            <span className="chip">{STORE.deliveryMode}</span>
             <span className="chip">Pedido mínimo {formatCurrency(STORE.minOrder)}</span>
           </div>
         </div>
@@ -29,6 +36,7 @@ export function StoreHeader() {
           href={waLink}
           target="_blank"
           rel="noreferrer"
+          aria-label={`Falar com a loja no WhatsApp (${STORE.whatsappDisplay})`}
         >
           WhatsApp
         </a>

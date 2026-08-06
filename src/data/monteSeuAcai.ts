@@ -13,6 +13,11 @@ export const ACADAI_SIZES: SizeOption[] = [
   { id: '500ml', name: '500ml', price: 21.9 },
 ]
 
+/** Maximum number of complements a customer may add (MOCK limit). */
+export const MAX_COMPLEMENTS = 4
+/** Maximum number of fruits a customer may add (MOCK limit). */
+export const MAX_FRUITS = 3
+
 /** Toppings such as granola and condensed milk. */
 export const COMPLEMENTS: PriceOption[] = [
   { id: 'granola', name: 'Granola', price: 2 },

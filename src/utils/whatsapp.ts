@@ -1,14 +1,15 @@
 ﻿import { STORE } from '../data/storeConfig'
 import type { CartItem, CheckoutData } from '../types/domain'
 import { formatCurrency } from './format'
-import { cartTotal, itemSubtotal } from './cart'
+import { cartTotal } from './cart'
 
-function extrasLabel(extras: CartItem['extras']): string {
-  if (extras.length === 0) return '—'
-  return extras.map((extra) => extra.label).join(', ')
+function itemName(item: CartItem): string {
+  return item.name.replace(/ · /g, ' ')
 }
 
-/** Builds a plain-text order message that is easy for the shop to read. */
+/**
+ * Builds a clean, emoji-friendly order message that is easy for the shop to read.
+ */
 export function buildOrderMessage(
   items: CartItem[],
   checkout: CheckoutData,
@@ -16,29 +17,30 @@ export function buildOrderMessage(
   const total = cartTotal(items)
   const lines: string[] = []
 
-  lines.push(`*Novo pedido — ${STORE.name}*`)
+  lines.push(`💜 Novo pedido - ${STORE.name}`)
   lines.push('')
 
-  lines.push('*Itens do pedido:*')
   items.forEach((item) => {
-    lines.push(`- ${item.quantity}x ${item.name} (${formatCurrency(item.unitPrice)})`)
-    lines.push(`  Adicionais: ${extrasLabel(item.extras)}`)
-    lines.push(`  Subtotal: ${formatCurrency(itemSubtotal(item))}`)
+    lines.push(`${item.quantity}x ${itemName(item)}`)
+    item.extras.forEach((extra) => lines.push(` ${extra.label}`))
+    lines.push(formatCurrency(item.unitPrice))
+    lines.push('')
   })
-  lines.push('')
-  lines.push(`*Subtotal:* ${formatCurrency(total)}`)
-  lines.push(`*Total:* ${formatCurrency(total)}`)
 
+  lines.push(`Total: ${formatCurrency(total)}`)
   lines.push('')
-  lines.push('*Dados de entrega:*')
-  lines.push(`Nome: ${checkout.name}`)
-  lines.push(`Telefone: ${checkout.phone}`)
-  lines.push(
-    `Endereço: ${checkout.address}, ${checkout.number}${checkout.complement ? ` — ${checkout.complement}` : ''}`,
-  )
-  lines.push(`Bairro: ${checkout.neighborhood || '—'}`)
-  lines.push(`Observações: ${checkout.notes || '—'}`)
-  lines.push(`Pagamento: ${checkout.paymentMethod}`)
+
+  lines.push(`👤 Nome: ${checkout.name}`)
+  lines.push(`📱 Telefone: ${checkout.phone}`)
+  const addressParts = [
+    checkout.address,
+    checkout.number && `nº ${checkout.number}`,
+    checkout.complement,
+    checkout.neighborhood,
+  ].filter(Boolean)
+  lines.push(`📍 Endereço: ${addressParts.join(' - ')}`)
+  lines.push(`💳 Pagamento: ${checkout.paymentMethod}`)
+  lines.push(`📝 Observações: ${checkout.notes || '—'}`)
 
   return lines.join('\n')
 }

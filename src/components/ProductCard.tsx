@@ -14,27 +14,27 @@ export function ProductCard({ product, onChoose }: ProductCardProps) {
     <article className={`product-card ${product.available ? '' : 'product-card--disabled'}`}>
       <ProductImage alt={product.name} src={product.image} />
       <div className="product-card__body">
-        <div className="product-card__title-row">
-          <h3 className="product-card__name">{product.name}</h3>
-          <span className="product-card__price">{priceLabel}</span>
-        </div>
+        <h3 className="product-card__name">{product.name}</h3>
         {product.subtitle && (
           <p className="product-card__subtitle">{product.subtitle}</p>
         )}
         {product.description && (
           <p className="product-card__description">{product.description}</p>
         )}
-        {product.available ? (
-          <button
-            type="button"
-            className="button button--primary product-card__choose"
-            onClick={() => onChoose(product)}
-          >
-            {product.category === 'monte-seu-acai' ? 'Montar' : 'Escolher'}
-          </button>
-        ) : (
-          <p className="product-card__unavailable">Indisponível</p>
-        )}
+        <div className="product-card__footer">
+          <span className="product-card__price">{priceLabel}</span>
+          {product.available ? (
+            <button
+              type="button"
+              className="button button--primary product-card__choose"
+              onClick={() => onChoose(product)}
+            >
+              {product.category === 'monte-seu-acai' ? 'Montar' : 'Escolher'}
+            </button>
+          ) : (
+            <span className="product-card__unavailable">Indisponível</span>
+          )}
+        </div>
       </div>
     </article>
   )

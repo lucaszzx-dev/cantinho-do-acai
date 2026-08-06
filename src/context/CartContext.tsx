@@ -1,12 +1,7 @@
-﻿import {
-  createContext,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
+﻿import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { CartItem } from '../types/domain'
+import { CartContext } from './cartContextValue'
+import type { AddItemInput, CartContextValue } from './cartContextValue'
 
 const STORAGE_KEY = 'cantinho-do-acai-cart'
 
@@ -36,17 +31,6 @@ function loadCart(): CartItem[] {
   }
 }
 
-export interface CartContextValue {
-  items: CartItem[]
-  addItem: (item: Omit<CartItem, 'uid' | 'quantity'>) => void
-  increaseQuantity: (uid: string) => void
-  decreaseQuantity: (uid: string) => void
-  removeItem: (uid: string) => void
-  clearCart: () => void
-}
-
-export const CartContext = createContext<CartContextValue | null>(null)
-
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(loadCart)
 
@@ -58,30 +42,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items])
 
-  const addItem = useCallback(
-    (item: Omit<CartItem, 'uid' | 'quantity'>) => {
-      setItems((current) => {
-        const existing = current.find(
-          (candidate) =>
-            candidate.productId === item.productId &&
-            candidate.unitPrice === item.unitPrice &&
-            JSON.stringify(candidate.extras) === JSON.stringify(item.extras),
+  const addItem = useCallback((item: AddItemInput) => {
+    setItems((current) => {
+      const existing = current.find(
+        (candidate) =>
+          candidate.productId === item.productId &&
+          candidate.unitPrice === item.unitPrice &&
+          JSON.stringify(candidate.extras) === JSON.stringify(item.extras),
+      )
+      if (existing) {
+        return current.map((candidate) =>
+          candidate.uid === existing.uid
+            ? { ...candidate, quantity: candidate.quantity + (item.quantity ?? 1) }
+            : candidate,
         )
-        if (existing) {
-          return current.map((candidate) =>
-            candidate.uid === existing.uid
-              ? { ...candidate, quantity: candidate.quantity + 1 }
-              : candidate,
-          )
-        }
-        return [
-          ...current,
-          { ...item, quantity: 1, uid: crypto.randomUUID() },
-        ]
-      })
-    },
-    [],
-  )
+      }
+      return [...current, { ...item, quantity: item.quantity ?? 1, uid: crypto.randomUUID() }]
+    })
+  }, [])
 
   const increaseQuantity = useCallback((uid: string) => {
     setItems((current) =>
@@ -109,7 +87,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems([])
   }, [])
 
-  const value = useMemo(
+  const value = useMemo<CartContextValue>(
     () => ({
       items,
       addItem,

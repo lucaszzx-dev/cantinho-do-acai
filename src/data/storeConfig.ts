@@ -13,12 +13,20 @@ export const STORE = {
   whatsappNumber: '5511980169607',
   whatsappDisplay: '11 98016-9607',
   minOrder: 16,
-  /** Placeholder used until the shop confirms its delivery/opening hours. */
-  hours: {
+  /**
+   * Placeholder used until the shop confirms its delivery/opening hours.
+   *
+   * `openNow` is MOCK. Swap this block for real logic later (compare the
+   * current time against `opensAt`/`closesAt`). Keep `pending: true` until the
+   * official schedule is confirmed.
+   */
+  schedule: {
     label: 'Horário de funcionamento',
-    /** MOCK — pending official schedule. */
     value: 'Consulte o WhatsApp',
     pending: true,
+    openNow: true,
+    opensAt: '15:00',
+    closesAt: '23:00',
   },
   /** MOCK — pending official store address. */
   address: {

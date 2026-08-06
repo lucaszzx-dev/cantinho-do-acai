@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
 import { CategoryNav } from './components/CategoryNav'
 import { FloatingCart } from './components/FloatingCart'
 import { MonteSeuAcaiModal } from './components/MonteSeuAcaiModal'
@@ -18,6 +18,9 @@ function MenuPage() {
   const [view, setView] = useState<'menu' | 'cart'>('menu')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [toast, setToast] = useState('')
+  const [activeId, setActiveId] = useState('')
+
+  const mainRef = useRef<HTMLElement>(null)
 
   const searchResults = useSearch(query)
   const isSearching = query.trim().length > 0
@@ -32,6 +35,24 @@ function MenuPage() {
       })),
     [searchResults],
   )
+
+  useEffect(() => {
+    if (view !== 'menu' || isSearching) return
+    const onScroll = () => {
+      const offset = 120
+      let current = ''
+      for (const category of CATEGORIES) {
+        const element = document.getElementById(category.id)
+        if (element && element.getBoundingClientRect().top <= offset) {
+          current = category.id
+        }
+      }
+      setActiveId(current)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [view, isSearching])
 
   const showToast = (message: string) => {
     setToast(message)
@@ -66,10 +87,16 @@ function MenuPage() {
   return (
     <div className="page">
       <StoreHeader />
-      <main className="page__main">
+      <main ref={mainRef} className="page__main">
         <WelcomeBanner />
         <SearchBar value={query} onChange={setQuery} />
-        {!isSearching && <CategoryNav categories={CATEGORIES} onSelect={handleCategorySelect} />}
+        {!isSearching && (
+          <CategoryNav
+            categories={CATEGORIES}
+            activeId={activeId}
+            onSelect={handleCategorySelect}
+          />
+        )}
 
         {isSearching ? (
           hasResults ? (
@@ -85,7 +112,9 @@ function MenuPage() {
             </div>
           ) : (
             <div className="search-empty">
-              <span className="search-empty__icon" aria-hidden="true">🍧</span>
+              <span className="search-empty__icon" aria-hidden="true">
+                🍧
+              </span>
               <p className="search-empty__title">Nenhum item encontrado</p>
               <p className="search-empty__text">
                 Tente buscar por outro nome, sabor ou categoria.
