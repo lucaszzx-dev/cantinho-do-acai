@@ -7,6 +7,7 @@ import { ProductSection } from './components/ProductSection'
 import { SearchBar } from './components/SearchBar'
 import { StoreHeader } from './components/StoreHeader'
 import { WelcomeBanner } from './components/WelcomeBanner'
+import { HomeExperience } from './components/HomeExperience'
 import { CartProvider } from './context/CartContext'
 import { CATEGORIES } from './data/categories'
 import { PRODUCTS } from './data/products'
@@ -102,9 +103,10 @@ function MenuPage() {
     <div className="page">
       <StoreHeader />
       <main ref={mainRef} className="page__main">
+        <HomeExperience products={products} onChoose={handleChoose} />
         <WelcomeBanner />
         {catalogError && <p className="catalog-notice">Catálogo local temporário em uso.</p>}
-        <SearchBar value={query} onChange={setQuery} />
+        <div id="cardapio"><SearchBar value={query} onChange={setQuery} /></div>
         {!isSearching && (
           <CategoryNav
             categories={categories}
