@@ -9,6 +9,7 @@ import { formatCurrency } from '../utils/format'
 import { buildOrderMessage, buildWhatsAppLink } from '../utils/whatsapp'
 import { saveCustomerSession, type CustomerSession } from '../api/customer'
 import { createOrder } from '../api/orders'
+import { completePersistedOrder } from '../utils/orderFlow'
 
 interface CartPageProps {
   onBack: () => void
@@ -67,8 +68,7 @@ export function CartPage({ onBack }: CartPageProps) {
     try {
       const order = await createOrder({ idempotencyKey, customerId: customer?.id, customerName: checkout.name, phone: checkout.phone, address: checkout.address, addressNumber: checkout.number, complement: checkout.complement, neighborhood: checkout.neighborhood, notes: checkout.notes, paymentMethod: checkout.paymentMethod, items: items.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, selections: item.selections })) })
       const message = `Pedido #${order.orderNumber}\n\n${buildOrderMessage(items, checkout)}`
-      window.open(buildWhatsAppLink(message), '_blank')
-      clearCart(); window.location.assign(`/pedido/${order.publicAccessToken}`)
+      completePersistedOrder(order, message, { openWhatsApp: (content) => window.open(buildWhatsAppLink(content), '_blank'), clearCart, navigate: (path) => window.location.assign(path) })
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível registrar o pedido.') } finally { setSubmitting(false) }
   }
 

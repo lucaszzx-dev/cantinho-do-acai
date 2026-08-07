@@ -18,6 +18,7 @@ import type { Product } from './types/domain'
 import { AdminPage } from './pages/AdminPage'
 import { OrderPage } from './pages/OrderPage'
 import { AdminLoginPage } from './pages/AdminLoginPage'
+import { MyOrdersPage } from './pages/MyOrdersPage'
 
 function MenuPage() {
   const [query, setQuery] = useState('')
@@ -182,6 +183,7 @@ export default function App() {
   if (window.location.pathname === '/admin') return <AdminPage />
   if (window.location.pathname === '/admin/login') return <AdminLoginPage />
   if (window.location.pathname.startsWith('/pedido/')) return <OrderPage id={window.location.pathname.split('/')[2]} />
+  if (window.location.pathname === '/meus-pedidos') return <MyOrdersPage />
   return (
     <CartProvider>
       <MenuPage />
