@@ -8,7 +8,7 @@ import { postgresCatalogRepository, type CatalogRepository } from './catalog/rep
 import { createCustomerSession, getCustomer } from './customers.js'
 import { db } from './db/client.js'
 import { categories, orders, products, storeConfig } from './db/schema.js'
-import { desc, eq } from 'drizzle-orm'
+import { desc, eq, sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { adminCookie, authenticateAdmin } from './admin-auth.js'
 import { createOrder, getOrder, getPublicOrder, orderStatuses, updateOrderStatus } from './orders.js'
@@ -29,13 +29,14 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
     reply.status(500).send({ error: 'internal_server_error' })
   })
   app.get('/health', async () => ({ status: 'ok' }))
+  app.get('/ready', async (_request, reply) => { try { await db.execute(sql`select 1`); return { status: 'ready' } } catch { return reply.status(503).send({ status: 'not_ready' }) } })
   app.get('/api/store', async (_request, reply) => {
     const store = await repository.getStore()
     return store ?? reply.status(404).send({ error: 'store_not_found' })
   })
   app.get('/api/categories', async () => repository.getCategories())
   app.get('/api/products', async () => repository.getProducts())
-  const orderInput = z.object({ idempotencyKey: z.string().uuid(), customerId: z.string().uuid().optional(), customerName: z.string().min(2), phone: z.string().min(8), address: z.string().min(2), addressNumber: z.string().min(1), complement: z.string().optional(), neighborhood: z.string().min(2), notes: z.string().optional(), paymentMethod: z.string().min(2), items: z.array(z.object({ productName: z.string().min(1), variantName: z.string().optional(), quantity: z.number().int().positive(), unitPrice: z.number().nonnegative(), options: z.array(z.unknown()).optional() })).min(1) })
+  const orderInput = z.object({ idempotencyKey: z.string().uuid(), customerId: z.string().uuid().optional(), customerName: z.string().min(2), phone: z.string().min(8), address: z.string().min(2), addressNumber: z.string().min(1), complement: z.string().optional(), neighborhood: z.string().min(2), notes: z.string().optional(), paymentMethod: z.string().min(2), items: z.array(z.object({ productId: z.string().min(1), variantId: z.string().optional(), quantity: z.number().int().positive(), selections: z.record(z.string(), z.array(z.string())) })).min(1) })
   app.post('/api/orders', async (request, reply) => { const order = await createOrder(orderInput.parse(request.body)); return reply.status(201).send({ orderNumber: order.number, publicAccessToken: order.publicAccessToken, status: order.status }) })
   app.get('/api/orders/public/:token', async (request, reply) => { const { token } = z.object({ token: z.string().min(32).max(128) }).parse(request.params); const order = await getPublicOrder(token); return order ? { number: order.number, status: order.status, paymentMethod: order.paymentMethod, totalCents: order.totalCents, items: order.items, history: order.history } : reply.status(404).send({ error: 'order_not_found' }) })
   app.get('/api/admin/orders/:id', async (request, reply) => { const { id } = z.object({ id: z.string().uuid() }).parse(request.params); return (await getOrder(id)) ?? reply.status(404).send({ error: 'order_not_found' }) })

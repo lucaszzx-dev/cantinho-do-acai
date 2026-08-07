@@ -65,7 +65,7 @@ export function CartPage({ onBack }: CartPageProps) {
       // The order remains available when the convenience profile API is offline.
     }
     try {
-      const order = await createOrder({ idempotencyKey, customerId: customer?.id, customerName: checkout.name, phone: checkout.phone, address: checkout.address, addressNumber: checkout.number, complement: checkout.complement, neighborhood: checkout.neighborhood, notes: checkout.notes, paymentMethod: checkout.paymentMethod, items: items.map((item) => ({ productName: item.productName, variantName: item.variantName, quantity: item.quantity, unitPrice: item.unitPrice, options: Object.values(item.selections).flat() })) })
+      const order = await createOrder({ idempotencyKey, customerId: customer?.id, customerName: checkout.name, phone: checkout.phone, address: checkout.address, addressNumber: checkout.number, complement: checkout.complement, neighborhood: checkout.neighborhood, notes: checkout.notes, paymentMethod: checkout.paymentMethod, items: items.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, selections: item.selections })) })
       const message = `Pedido #${order.orderNumber}\n\n${buildOrderMessage(items, checkout)}`
       window.open(buildWhatsAppLink(message), '_blank')
       clearCart(); window.location.assign(`/pedido/${order.publicAccessToken}`)

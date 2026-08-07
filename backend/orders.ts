@@ -1,18 +1,20 @@
 import { desc, eq } from 'drizzle-orm'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { db } from './db/client.js'
-import { orderItems, orders, orderStatusHistory } from './db/schema.js'
+import { optionGroups, orderItems, orders, orderStatusHistory, productOptions, productVariants, products } from './db/schema.js'
 
 export const orderStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'] as const
 export type OrderStatus = typeof orderStatuses[number]
 const transitions: Record<OrderStatus, OrderStatus[]> = { pending: ['confirmed', 'cancelled'], confirmed: ['preparing', 'cancelled'], preparing: ['ready', 'cancelled'], ready: ['out_for_delivery', 'delivered'], out_for_delivery: ['delivered'], delivered: [], cancelled: [] }
-export async function createOrder(input: any) {
+export type CreateOrderInput = { idempotencyKey: string; customerId?: string; customerName: string; phone: string; address: string; addressNumber: string; complement?: string; neighborhood: string; notes?: string; paymentMethod: string; items: { productId: string; variantId?: string; quantity: number; selections: Record<string, string[]> }[] }
+export async function createOrder(input: CreateOrderInput) {
   const [existing] = await db.select().from(orders).where(eq(orders.idempotencyKey, input.idempotencyKey)).limit(1)
   if (existing) return existing
-  const subtotalCents = input.items.reduce((sum: number, item: any) => sum + Math.round(item.unitPrice * 100) * item.quantity, 0)
+  const resolved = await Promise.all(input.items.map(async (item) => { const [product] = await db.select().from(products).where(eq(products.id, item.productId)).limit(1); if (!product?.active) throw new Error('Produto indisponível.'); const [variants, groups] = await Promise.all([db.select().from(productVariants).where(eq(productVariants.productId, product.id)), db.select().from(optionGroups).where(eq(optionGroups.productId, product.id))]); const variant = item.variantId ? variants.find((value) => value.id === `${product.id}:${item.variantId}` && value.active) : undefined; if (item.variantId && !variant) throw new Error('Variante indisponível.'); let priceCents = variant?.priceCents ?? product.basePriceCents; const options = await db.select().from(productOptions); const selected = Object.entries(item.selections).flatMap(([groupId, ids]) => ids.map((id) => ({ groupId, id }))); for (const group of groups) { const ids = item.selections[group.id.slice(product.id.length + 1)] ?? []; if (group.required && ids.length < group.minSelectable) throw new Error('Seleção obrigatória ausente.'); if (group.maxSelectable && ids.length > group.maxSelectable) throw new Error('Limite de opções excedido.'); for (const id of ids) { const option = options.find((value) => value.optionGroupId === group.id && value.id === `${group.id}:${id}` && value.active); if (!option) throw new Error('Opção indisponível.'); priceCents += option.priceCents } }; return { productName: product.name, variantName: variant?.name, quantity: item.quantity, unitPriceCents: priceCents, subtotalCents: priceCents * item.quantity, options: selected } }))
+  const subtotalCents = resolved.reduce((sum, item) => sum + item.subtotalCents, 0)
   const number = Number(`${Date.now()}`.slice(-6))
   const [order] = await db.insert(orders).values({ id: randomUUID(), number, publicAccessToken: randomBytes(32).toString('base64url'), customerId: input.customerId, customerName: input.customerName, phone: input.phone, address: input.address, addressNumber: input.addressNumber, complement: input.complement, neighborhood: input.neighborhood, notes: input.notes, paymentMethod: input.paymentMethod, subtotalCents, totalCents: subtotalCents, status: 'pending', idempotencyKey: input.idempotencyKey }).returning()
-  await db.insert(orderItems).values(input.items.map((item: any) => ({ id: randomUUID(), orderId: order.id, productName: item.productName, variantName: item.variantName, quantity: item.quantity, unitPriceCents: Math.round(item.unitPrice * 100), subtotalCents: Math.round(item.unitPrice * 100) * item.quantity, options: item.options ?? [] })))
+  await db.insert(orderItems).values(resolved.map((item) => ({ id: randomUUID(), orderId: order.id, ...item })))
   await db.insert(orderStatusHistory).values({ id: randomUUID(), orderId: order.id, status: 'pending' })
   return order
 }
