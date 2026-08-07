@@ -1065,6 +1065,7 @@ textarea:focus-visible {
 }
 
 .customer-session button { border: 0; background: transparent; color: var(--purple-700); font-weight: 700; text-decoration: underline; }
+.order-page { padding-top: 24px; }.order-page h1 { color: var(--purple-900); }.order-page__status { color: var(--purple-700); font-weight: 800; }.order-timeline { list-style: none; padding: 0; display: grid; gap: 10px; }.order-timeline li { color: var(--muted); }.order-timeline .is-done { color: var(--green-600); font-weight: 700; }
 
 .checkout-block {
   background: var(--surface);

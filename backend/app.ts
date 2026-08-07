@@ -7,10 +7,11 @@ import { env } from './env.js'
 import { postgresCatalogRepository, type CatalogRepository } from './catalog/repository.js'
 import { createCustomerSession, getCustomer } from './customers.js'
 import { db } from './db/client.js'
-import { categories, products, storeConfig } from './db/schema.js'
-import { eq } from 'drizzle-orm'
+import { categories, orders, products, storeConfig } from './db/schema.js'
+import { desc, eq } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { adminCookie, authenticateAdmin } from './admin-auth.js'
+import { createOrder, getOrder, getPublicOrder, orderStatuses, updateOrderStatus } from './orders.js'
 
 export function buildApp(repository: CatalogRepository = postgresCatalogRepository) {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info', redact: ['req.headers.authorization'] } })
@@ -34,6 +35,11 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
   })
   app.get('/api/categories', async () => repository.getCategories())
   app.get('/api/products', async () => repository.getProducts())
+  const orderInput = z.object({ idempotencyKey: z.string().uuid(), customerId: z.string().uuid().optional(), customerName: z.string().min(2), phone: z.string().min(8), address: z.string().min(2), addressNumber: z.string().min(1), complement: z.string().optional(), neighborhood: z.string().min(2), notes: z.string().optional(), paymentMethod: z.string().min(2), items: z.array(z.object({ productName: z.string().min(1), variantName: z.string().optional(), quantity: z.number().int().positive(), unitPrice: z.number().nonnegative(), options: z.array(z.unknown()).optional() })).min(1) })
+  app.post('/api/orders', async (request, reply) => { const order = await createOrder(orderInput.parse(request.body)); return reply.status(201).send({ orderNumber: order.number, publicAccessToken: order.publicAccessToken, status: order.status }) })
+  app.get('/api/orders/public/:token', async (request, reply) => { const { token } = z.object({ token: z.string().min(32).max(128) }).parse(request.params); const order = await getPublicOrder(token); return order ? { number: order.number, status: order.status, paymentMethod: order.paymentMethod, totalCents: order.totalCents, items: order.items, history: order.history } : reply.status(404).send({ error: 'order_not_found' }) })
+  app.get('/api/admin/orders/:id', async (request, reply) => { const { id } = z.object({ id: z.string().uuid() }).parse(request.params); return (await getOrder(id)) ?? reply.status(404).send({ error: 'order_not_found' }) })
+  app.patch('/api/admin/orders/:id/status', async (request, reply) => { const { id } = z.object({ id: z.string().uuid() }).parse(request.params); const { status } = z.object({ status: z.enum(orderStatuses) }).parse(request.body); const order = await updateOrderStatus(id, status); return order ?? reply.status(409).send({ error: 'invalid_status_transition' }) })
   app.post('/api/admin/auth/login', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => {
     const input = z.object({ email: z.string().email(), password: z.string().min(8) }).parse(request.body)
     const user = await authenticateAdmin(input.email, input.password)
@@ -45,6 +51,7 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
   app.get('/api/admin/auth/me', async (request, reply) => { const session = request.unsignCookie(request.cookies[adminCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'admin_unauthorized' }); return { id: session.value } })
   const productInput = z.object({ name: z.string().min(2), slug: z.string().min(2), categoryId: z.string().min(1), description: z.string().optional(), image: z.string().optional(), active: z.boolean().default(true), sortOrder: z.number().int().nonnegative().default(0), price: z.number().nonnegative(), fromPrice: z.boolean().default(false) })
   app.get('/api/admin/products', async () => repository.getProducts())
+  app.get('/api/admin/orders', async () => db.select().from(orders).orderBy(desc(orders.createdAt)).limit(100))
   app.post('/api/admin/products', async (request, reply) => {
     const input = productInput.parse(request.body)
     const [product] = await db.insert(products).values({ id: randomUUID(), ...input, basePriceCents: Math.round(input.price * 100) }).returning()

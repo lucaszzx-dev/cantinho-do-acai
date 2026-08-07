@@ -16,6 +16,8 @@ import { useSearch } from './hooks/useSearch'
 import { CartPage } from './pages/CartPage'
 import type { Product } from './types/domain'
 import { AdminPage } from './pages/AdminPage'
+import { OrderPage } from './pages/OrderPage'
+import { AdminLoginPage } from './pages/AdminLoginPage'
 
 function MenuPage() {
   const [query, setQuery] = useState('')
@@ -178,6 +180,8 @@ function MenuPage() {
 
 export default function App() {
   if (window.location.pathname === '/admin') return <AdminPage />
+  if (window.location.pathname === '/admin/login') return <AdminLoginPage />
+  if (window.location.pathname.startsWith('/pedido/')) return <OrderPage id={window.location.pathname.split('/')[2]} />
   return (
     <CartProvider>
       <MenuPage />

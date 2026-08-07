@@ -8,6 +8,7 @@ import { cartTotal } from '../utils/cart'
 import { formatCurrency } from '../utils/format'
 import { buildOrderMessage, buildWhatsAppLink } from '../utils/whatsapp'
 import { saveCustomerSession, type CustomerSession } from '../api/customer'
+import { createOrder } from '../api/orders'
 
 interface CartPageProps {
   onBack: () => void
@@ -34,6 +35,8 @@ export function CartPage({ onBack }: CartPageProps) {
   const [customer, setCustomer] = useState<CustomerSession | null>(loadCustomer)
   const [checkout, setCheckout] = useState<CheckoutData>(() => ({ ...EMPTY_CHECKOUT, name: loadCustomer()?.name ?? '', phone: loadCustomer()?.phone ?? '' }))
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   const total = cartTotal(items)
   const missing = Math.max(0, STORE.minOrder - total)
@@ -53,7 +56,7 @@ export function CartPage({ onBack }: CartPageProps) {
       setError('Escolha uma forma de pagamento.')
       return
     }
-    setError('')
+    setError(''); setSubmitting(true)
     try {
       const session = await saveCustomerSession(checkout.name.trim(), checkout.phone)
       localStorage.setItem(CUSTOMER_KEY, JSON.stringify(session))
@@ -61,9 +64,12 @@ export function CartPage({ onBack }: CartPageProps) {
     } catch {
       // The order remains available when the convenience profile API is offline.
     }
-    const message = buildOrderMessage(items, checkout)
-    window.open(buildWhatsAppLink(message), '_blank')
-    clearCart()
+    try {
+      const order = await createOrder({ idempotencyKey, customerId: customer?.id, customerName: checkout.name, phone: checkout.phone, address: checkout.address, addressNumber: checkout.number, complement: checkout.complement, neighborhood: checkout.neighborhood, notes: checkout.notes, paymentMethod: checkout.paymentMethod, items: items.map((item) => ({ productName: item.productName, variantName: item.variantName, quantity: item.quantity, unitPrice: item.unitPrice, options: Object.values(item.selections).flat() })) })
+      const message = `Pedido #${order.orderNumber}\n\n${buildOrderMessage(items, checkout)}`
+      window.open(buildWhatsAppLink(message), '_blank')
+      clearCart(); window.location.assign(`/pedido/${order.publicAccessToken}`)
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível registrar o pedido.') } finally { setSubmitting(false) }
   }
 
   return (
@@ -175,9 +181,9 @@ export function CartPage({ onBack }: CartPageProps) {
             type="button"
             className="button button--whatsapp checkout-bar__cta"
             onClick={handleFinalize}
-            disabled={!canFinalize}
+            disabled={!canFinalize || submitting}
           >
-            Finalizar no WhatsApp
+            {submitting ? 'Registrando pedido…' : 'Finalizar no WhatsApp'}
           </button>
         </div>
       )}
