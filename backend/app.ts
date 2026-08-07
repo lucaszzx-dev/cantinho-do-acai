@@ -1,4 +1,6 @@
 import cors from '@fastify/cors'
+import cookie from '@fastify/cookie'
+import rateLimit from '@fastify/rate-limit'
 import Fastify from 'fastify'
 import { z } from 'zod'
 import { env } from './env.js'
@@ -8,10 +10,19 @@ import { db } from './db/client.js'
 import { categories, products, storeConfig } from './db/schema.js'
 import { eq } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
+import { adminCookie, authenticateAdmin } from './admin-auth.js'
 
 export function buildApp(repository: CatalogRepository = postgresCatalogRepository) {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info', redact: ['req.headers.authorization'] } })
   app.register(cors, { origin: env.FRONTEND_ORIGIN })
+  app.register(cookie, { secret: process.env.ADMIN_SESSION_SECRET ?? 'development-only-change-me' })
+  app.register(rateLimit, { global: false })
+  app.addHook('onRequest', async (request, reply) => {
+    if (!request.url.startsWith('/api/admin/') || request.url.startsWith('/api/admin/auth/')) return
+    const session = request.unsignCookie(request.cookies[adminCookie] ?? '')
+    if (!session.valid) return reply.status(401).send({ error: 'admin_unauthorized' })
+    request.headers['x-admin-id'] = session.value
+  })
   app.setErrorHandler((error, _request, reply) => {
     app.log.error(error)
     reply.status(500).send({ error: 'internal_server_error' })
@@ -23,6 +34,15 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
   })
   app.get('/api/categories', async () => repository.getCategories())
   app.get('/api/products', async () => repository.getProducts())
+  app.post('/api/admin/auth/login', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => {
+    const input = z.object({ email: z.string().email(), password: z.string().min(8) }).parse(request.body)
+    const user = await authenticateAdmin(input.email, input.password)
+    if (!user) return reply.status(401).send({ error: 'invalid_credentials' })
+    reply.setCookie(adminCookie, user.id, { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production', signed: true, maxAge: 60 * 60 * 8 })
+    return { id: user.id, name: user.name, email: user.email }
+  })
+  app.post('/api/admin/auth/logout', async (_request, reply) => { reply.clearCookie(adminCookie, { path: '/' }); return { ok: true } })
+  app.get('/api/admin/auth/me', async (request, reply) => { const session = request.unsignCookie(request.cookies[adminCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'admin_unauthorized' }); return { id: session.value } })
   const productInput = z.object({ name: z.string().min(2), slug: z.string().min(2), categoryId: z.string().min(1), description: z.string().optional(), image: z.string().optional(), active: z.boolean().default(true), sortOrder: z.number().int().nonnegative().default(0), price: z.number().nonnegative(), fromPrice: z.boolean().default(false) })
   app.get('/api/admin/products', async () => repository.getProducts())
   app.post('/api/admin/products', async (request, reply) => {
