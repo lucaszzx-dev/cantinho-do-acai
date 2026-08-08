@@ -1,8 +1,8 @@
 import type { Category, Product } from '../types/domain'
+import { apiRequest } from './client'
 
-const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 async function request<T>(path: string): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`)
+  const response = await apiRequest(path)
   if (!response.ok) throw new Error(`Catalog API returned ${response.status}`)
   return response.json() as Promise<T>
 }

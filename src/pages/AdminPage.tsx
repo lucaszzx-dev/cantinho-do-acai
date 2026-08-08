@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import type { Category, Product } from '../types/domain'
 import { catalogApi } from '../api/catalog'
 import { formatCurrency } from '../utils/format'
+import { apiUrl } from '../api/client'
 
-const baseUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+const baseUrl = apiUrl
 async function api(path: string, method = 'GET', body?: unknown) { const response = await fetch(`${baseUrl}${path}`, { method, credentials: 'include', headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); if (!response.ok) throw new Error('Não foi possível salvar as alterações.'); return response.json() }
 const labels: Record<string, string> = { pending: 'Aguardando confirmação', confirmed: 'Confirmado', preparing: 'Preparando', ready: 'Pronto', out_for_delivery: 'Saiu para entrega', delivered: 'Entregue', cancelled: 'Cancelado' }
 

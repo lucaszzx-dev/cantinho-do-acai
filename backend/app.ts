@@ -15,8 +15,8 @@ import { createOrder, getOrder, getPublicOrder, orderStatuses, updateOrderStatus
 
 export function buildApp(repository: CatalogRepository = postgresCatalogRepository) {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info', redact: ['req.headers.authorization'] } })
-  app.register(cors, { origin: env.FRONTEND_ORIGIN })
-  app.register(cookie, { secret: process.env.ADMIN_SESSION_SECRET ?? 'development-only-change-me' })
+  app.register(cors, { origin: env.FRONTEND_ORIGIN, credentials: true })
+  app.register(cookie, { secret: env.ADMIN_SESSION_SECRET ?? 'development-only-change-me' })
   app.register(rateLimit, { global: false })
   app.addHook('onRequest', async (request, reply) => {
     if (!request.url.startsWith('/api/admin/') || request.url.startsWith('/api/admin/auth/')) return
@@ -25,6 +25,7 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
     request.headers['x-admin-id'] = session.value
   })
   app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof z.ZodError) return reply.status(400).send({ error: 'invalid_request' })
     app.log.error(error)
     reply.status(500).send({ error: 'internal_server_error' })
   })
