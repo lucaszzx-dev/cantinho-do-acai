@@ -483,6 +483,7 @@ textarea:focus-visible {
   color: var(--muted);
   line-height: 1.4;
 }
+.product-card__description{max-height:0;opacity:0;overflow:hidden;transform:translateY(6px);transition:max-height .28s ease,opacity .24s ease,transform .24s ease}.product-card:hover .product-card__description,.product-card:focus-visible .product-card__description,.product-card.is-expanded .product-card__description{max-height:120px;opacity:1;transform:none}.product-card:hover,.product-card:focus-visible,.product-card.is-expanded{transform:translateY(-8px) scale(1.01);box-shadow:0 18px 34px rgba(46,16,101,.2);border-color:#bda4ef;outline:none}.product-card:hover .product-card__price,.product-card.is-expanded .product-card__price{font-size:1.05rem}.product-card__choose{transition:transform .2s ease,box-shadow .2s ease,background .2s ease}.product-card__choose:hover,.product-card__choose:focus-visible,.product-story__copy .button:hover,.product-story__copy .button:focus-visible{transform:translateY(-2px) scale(1.03);box-shadow:0 10px 20px rgba(46,16,101,.3);outline:3px solid rgba(255,255,255,.6);outline-offset:3px}
 
 .product-card__footer {
   margin-top: 12px;
