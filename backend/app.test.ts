@@ -14,6 +14,10 @@ describe('catalog API', () => {
   it('returns categories and products with variants/options', async () => { expect((await app.inject('/api/categories')).statusCode).toBe(200); const body = (await app.inject('/api/products')).json(); expect(body[0].variants[0].id).toBe('300ml'); expect(body[0].optionGroups[0].options[0].id).toBe('bis') })
   it('returns a product by slug and 404 otherwise', async () => { expect((await app.inject('/api/products/acai')).statusCode).toBe(200); expect((await app.inject('/api/products/missing')).statusCode).toBe(404) })
   it('protects the administrative order queue', async () => { expect((await app.inject('/api/admin/orders')).statusCode).toBe(401) })
+  it('protects administrative payment configuration', async () => {
+    expect((await app.inject('/api/admin/payments')).statusCode).toBe(401)
+    expect((await app.inject({ method: 'PUT', url: '/api/admin/payments', payload: [] })).statusCode).toBe(401)
+  })
   it('does not reveal orders to malformed public tracking tokens', async () => { expect((await app.inject('/api/orders/public/not-a-valid-token')).statusCode).toBe(404) })
 })
 

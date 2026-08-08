@@ -1,148 +1,15 @@
-﻿import { STORE } from '../data/storeConfig'
+import type { PublicPaymentMethod } from '../api/payments'
 import type { CheckoutData } from '../types/domain'
 
-interface CheckoutFormProps {
-  value: CheckoutData
-  onChange: (next: CheckoutData) => void
-}
+interface CheckoutFormProps { value: CheckoutData; onChange: (next: CheckoutData) => void; paymentMethods: PublicPaymentMethod[]; paymentsLoading: boolean; paymentsError: string }
 
-export function CheckoutForm({ value, onChange }: CheckoutFormProps) {
-  const update = (field: keyof CheckoutData, fieldValue: string) => {
-    onChange({ ...value, [field]: fieldValue })
-  }
-
-  return (
-    <form className="checkout-form" onSubmit={(event) => event.preventDefault()}>
-      <section className="checkout-block" aria-labelledby="block-dados">
-        <h3 className="checkout-block__title" id="block-dados">
-          Seus dados
-        </h3>
-        <div className="field">
-          <label className="field__label" htmlFor="checkout-name">
-            Nome *
-          </label>
-          <input
-            id="checkout-name"
-            className="field__input"
-            value={value.name}
-            onChange={(event) => update('name', event.target.value)}
-            autoComplete="name"
-          />
-        </div>
-        <div className="field">
-          <label className="field__label" htmlFor="checkout-phone">
-            Telefone / WhatsApp *
-          </label>
-          <input
-            id="checkout-phone"
-            className="field__input"
-            type="tel"
-            inputMode="tel"
-            value={value.phone}
-            onChange={(event) => update('phone', event.target.value)}
-            autoComplete="tel"
-            placeholder="(11) 90000-0000"
-          />
-        </div>
-      </section>
-
-      <section className="checkout-block" aria-labelledby="block-entrega">
-        <h3 className="checkout-block__title" id="block-entrega">
-          Entrega
-        </h3>
-        <div className="field">
-          <label className="field__label" htmlFor="checkout-address">
-            Endereço *
-          </label>
-          <input
-            id="checkout-address"
-            className="field__input"
-            value={value.address}
-            onChange={(event) => update('address', event.target.value)}
-            autoComplete="street-address"
-          />
-        </div>
-        <div className="field-row">
-          <div className="field">
-            <label className="field__label" htmlFor="checkout-number">
-              Número *
-            </label>
-            <input
-              id="checkout-number"
-              className="field__input"
-              value={value.number}
-              onChange={(event) => update('number', event.target.value)}
-              inputMode="numeric"
-            />
-          </div>
-          <div className="field">
-            <label className="field__label" htmlFor="checkout-complement">
-              Complemento
-            </label>
-            <input
-              id="checkout-complement"
-              className="field__input"
-              value={value.complement}
-              onChange={(event) => update('complement', event.target.value)}
-              placeholder="Apto, casa, bloco"
-            />
-          </div>
-        </div>
-        <div className="field">
-          <label className="field__label" htmlFor="checkout-neighborhood">
-            Bairro *
-          </label>
-          <input
-            id="checkout-neighborhood"
-            className="field__input"
-            value={value.neighborhood}
-            onChange={(event) => update('neighborhood', event.target.value)}
-          />
-        </div>
-      </section>
-
-      <section className="checkout-block" aria-labelledby="block-pagamento">
-        <h3 className="checkout-block__title" id="block-pagamento">
-          Pagamento
-        </h3>
-        <fieldset className="field field--radio">
-          <legend className="field__label">Forma de pagamento *</legend>
-          <div className="field__radios">
-            {STORE.paymentMethods.map((method) => (
-              <label key={method.id} className="field__radio">
-                <input
-                  type="radio"
-                  name="payment"
-                  value={method.label}
-                  checked={value.paymentMethod === method.label}
-                  onChange={() => update('paymentMethod', method.label)}
-                />
-                <span>{method.label}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <p className="checkout-form__note">{STORE.deliveryNote}</p>
-      </section>
-
-      <section className="checkout-block" aria-labelledby="block-observacoes">
-        <h3 className="checkout-block__title" id="block-observacoes">
-          Observações
-        </h3>
-        <div className="field">
-          <label className="field__label" htmlFor="checkout-notes">
-            Algum detalhe do pedido?
-          </label>
-          <textarea
-            id="checkout-notes"
-            className="field__input field__input--textarea"
-            rows={3}
-            value={value.notes}
-            onChange={(event) => update('notes', event.target.value)}
-            placeholder="Ex.: ponto de referência, sem açúcar…"
-          />
-        </div>
-      </section>
-    </form>
-  )
+export function CheckoutForm({ value, onChange, paymentMethods, paymentsLoading, paymentsError }: CheckoutFormProps) {
+  const update = (field: keyof CheckoutData, fieldValue: string) => onChange({ ...value, [field]: fieldValue })
+  const pix = paymentMethods.find((method) => method.id === 'pix')
+  return <form className="checkout-form" onSubmit={(event) => event.preventDefault()}>
+    <section className="checkout-block"><h3 className="checkout-block__title">Seus dados</h3><div className="field"><label className="field__label" htmlFor="checkout-name">Nome *</label><input id="checkout-name" className="field__input" value={value.name} onChange={(event) => update('name', event.target.value)} autoComplete="name" /></div><div className="field"><label className="field__label" htmlFor="checkout-phone">Telefone / WhatsApp *</label><input id="checkout-phone" className="field__input" type="tel" inputMode="tel" value={value.phone} onChange={(event) => update('phone', event.target.value)} autoComplete="tel" placeholder="(11) 90000-0000" /></div></section>
+    <section className="checkout-block"><h3 className="checkout-block__title">Entrega</h3><div className="field"><label className="field__label" htmlFor="checkout-address">Endereço *</label><input id="checkout-address" className="field__input" value={value.address} onChange={(event) => update('address', event.target.value)} autoComplete="street-address" /></div><div className="field-row"><div className="field"><label className="field__label" htmlFor="checkout-number">Número *</label><input id="checkout-number" className="field__input" value={value.number} onChange={(event) => update('number', event.target.value)} inputMode="numeric" /></div><div className="field"><label className="field__label" htmlFor="checkout-complement">Complemento</label><input id="checkout-complement" className="field__input" value={value.complement} onChange={(event) => update('complement', event.target.value)} /></div></div><div className="field"><label className="field__label" htmlFor="checkout-neighborhood">Bairro *</label><input id="checkout-neighborhood" className="field__input" value={value.neighborhood} onChange={(event) => update('neighborhood', event.target.value)} /></div></section>
+    <section className="checkout-block"><h3 className="checkout-block__title">Pagamento</h3><fieldset className="field field--radio"><legend className="field__label">Forma de pagamento *</legend>{paymentsLoading && <p className="checkout-form__note">Carregando formas de pagamento…</p>}{paymentsError && <p className="form-error">{paymentsError}</p>}{!paymentsLoading && !paymentsError && paymentMethods.length === 0 && <p className="form-error">Nenhuma forma de pagamento está disponível no momento.</p>}<div className="field__radios">{paymentMethods.map((method) => <label key={method.id} className="field__radio"><input type="radio" name="payment" value={method.id} checked={value.paymentMethod === method.id} onChange={() => update('paymentMethod', method.id)} /><span>{method.label}</span></label>)}</div></fieldset>{value.paymentMethod === 'pix' && <p className="checkout-form__note">{pix?.instruction}{pix?.pixKey && <><br />Chave Pix: {pix.pixKey}</>}</p>}{value.paymentMethod === 'cash' && <div className="field"><span className="field__label">Precisa de troco?</span><div className="field__radios"><label className="field__radio"><input type="radio" name="change" checked={!value.needsChange} onChange={() => onChange({ ...value, needsChange: false, changeForCents: undefined })} /><span>Não</span></label><label className="field__radio"><input type="radio" name="change" checked={!!value.needsChange} onChange={() => onChange({ ...value, needsChange: true })} /><span>Sim</span></label></div>{value.needsChange && <label className="field__label">Troco para quanto?<input className="field__input" inputMode="decimal" placeholder="R$ 50,00" value={value.changeForCents ? (value.changeForCents / 100).toFixed(2).replace('.', ',') : ''} onChange={(event) => { const cents = Math.round(Number(event.target.value.replace(/[^\d,]/g, '').replace(',', '.')) * 100); onChange({ ...value, changeForCents: Number.isFinite(cents) ? cents : undefined }) }} /></label>}</div>}</section>
+    <section className="checkout-block"><h3 className="checkout-block__title">Observações</h3><div className="field"><label className="field__label" htmlFor="checkout-notes">Algum detalhe do pedido?</label><textarea id="checkout-notes" className="field__input field__input--textarea" rows={3} value={value.notes} onChange={(event) => update('notes', event.target.value)} placeholder="Ex.: ponto de referência, sem açúcar…" /></div></section>
+  </form>
 }

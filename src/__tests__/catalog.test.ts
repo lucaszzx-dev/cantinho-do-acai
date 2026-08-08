@@ -257,6 +257,15 @@ describe('WhatsApp message', () => {
     expect(msg).not.toContain('abc-123')
     expect(msg).not.toContain('acai-tradicional')
   })
+
+  it('includes Pix as the selected payment', () => {
+    expect(buildOrderMessage([], MOCK_CHECKOUT)).toContain('Pagamento: Pix')
+  })
+
+  it('includes requested cash change', () => {
+    const message = buildOrderMessage([], { ...MOCK_CHECKOUT, paymentMethod: 'Dinheiro', needsChange: true, changeForCents: 5000 })
+    expect(message).toContain('Troco para: R$ 50,00')
+  })
 })
 
 describe('Product structure', () => {

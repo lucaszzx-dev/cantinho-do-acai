@@ -80,6 +80,7 @@ export function buildOrderMessage(
   ].filter(Boolean)
   lines.push(`Endereço: ${addressParts.join(' - ')}`)
   lines.push(`Pagamento: ${checkout.paymentMethod}`)
+  if (checkout.paymentMethod === 'Dinheiro') lines.push(checkout.needsChange && checkout.changeForCents ? `Troco para: ${formatCurrency(checkout.changeForCents / 100)}` : 'Troco: Não precisa')
   if (checkout.notes) lines.push(`Observações: ${checkout.notes}`)
 
   return lines.join('\n')

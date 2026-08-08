@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CartLineItem } from '../components/CartLineItem'
 import { CheckoutForm } from '../components/CheckoutForm'
 import { useCart } from '../hooks/useCart'
@@ -10,6 +10,7 @@ import { buildOrderMessage, buildWhatsAppLink } from '../utils/whatsapp'
 import { saveCustomerSession, type CustomerSession } from '../api/customer'
 import { createOrder } from '../api/orders'
 import { completePersistedOrder } from '../utils/orderFlow'
+import { getPaymentMethods, type PublicPaymentMethod } from '../api/payments'
 
 interface CartPageProps {
   onBack: () => void
@@ -24,6 +25,7 @@ const EMPTY_CHECKOUT: CheckoutData = {
   neighborhood: '',
   notes: '',
   paymentMethod: '',
+  needsChange: false,
 }
 const CUSTOMER_KEY = 'cantinho-do-acai-customer'
 
@@ -37,11 +39,15 @@ export function CartPage({ onBack }: CartPageProps) {
   const [checkout, setCheckout] = useState<CheckoutData>(() => ({ ...EMPTY_CHECKOUT, name: loadCustomer()?.name ?? '', phone: loadCustomer()?.phone ?? '' }))
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [paymentMethods, setPaymentMethods] = useState<PublicPaymentMethod[]>([])
+  const [paymentsLoading, setPaymentsLoading] = useState(true)
+  const [paymentsError, setPaymentsError] = useState('')
   const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   const total = cartTotal(items)
   const missing = Math.max(0, STORE.minOrder - total)
   const canFinalize = total >= STORE.minOrder
+  useEffect(() => { getPaymentMethods().then(setPaymentMethods).catch((cause) => setPaymentsError(cause instanceof Error ? cause.message : 'Não foi possível carregar as formas de pagamento.')).finally(() => setPaymentsLoading(false)) }, [])
 
   const handleFinalize = async () => {
     if (!canFinalize) return
@@ -53,8 +59,12 @@ export function CartPage({ onBack }: CartPageProps) {
       setError('Preencha endereço, número e bairro para continuar.')
       return
     }
-    if (!checkout.paymentMethod) {
+    if (paymentsLoading || paymentsError || paymentMethods.length === 0 || !checkout.paymentMethod) {
       setError('Escolha uma forma de pagamento.')
+      return
+    }
+    if (checkout.paymentMethod === 'cash' && checkout.needsChange && (!checkout.changeForCents || checkout.changeForCents < Math.round(total * 100))) {
+      setError('O valor para troco deve ser igual ou maior que o total do pedido.')
       return
     }
     setError(''); setSubmitting(true)
@@ -66,8 +76,9 @@ export function CartPage({ onBack }: CartPageProps) {
       // The order remains available when the convenience profile API is offline.
     }
     try {
-      const order = await createOrder({ idempotencyKey, customerId: customer?.id, customerName: checkout.name, phone: checkout.phone, address: checkout.address, addressNumber: checkout.number, complement: checkout.complement, neighborhood: checkout.neighborhood, notes: checkout.notes, paymentMethod: checkout.paymentMethod, items: items.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, selections: item.selections })) })
-      const message = `Pedido #${order.orderNumber}\n\n${buildOrderMessage(items, checkout)}`
+      const order = await createOrder({ idempotencyKey, customerId: customer?.id, customerName: checkout.name, phone: checkout.phone, address: checkout.address, addressNumber: checkout.number, complement: checkout.complement, neighborhood: checkout.neighborhood, notes: checkout.notes, paymentMethod: checkout.paymentMethod, needsChange: checkout.needsChange, changeForCents: checkout.changeForCents, items: items.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, selections: item.selections })) })
+      const paymentLabel = paymentMethods.find((method) => method.id === checkout.paymentMethod)?.label ?? checkout.paymentMethod
+      const message = `Pedido #${order.orderNumber}\n\n${buildOrderMessage(items, { ...checkout, paymentMethod: paymentLabel })}`
       completePersistedOrder(order, message, { openWhatsApp: (content) => window.open(buildWhatsAppLink(content), '_blank'), clearCart, navigate: (path) => window.location.assign(path) })
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Não foi possível registrar o pedido.') } finally { setSubmitting(false) }
   }
@@ -124,7 +135,7 @@ export function CartPage({ onBack }: CartPageProps) {
                   <button type="button" onClick={() => { localStorage.removeItem(CUSTOMER_KEY); setCustomer(null); setCheckout(EMPTY_CHECKOUT) }}>Sair</button>
                 </div>
               )}
-              <CheckoutForm value={checkout} onChange={setCheckout} />
+              <CheckoutForm value={checkout} onChange={setCheckout} paymentMethods={paymentMethods} paymentsLoading={paymentsLoading} paymentsError={paymentsError} />
 
               <section className="checkout-block" aria-labelledby="block-revisao">
                 <h3 className="checkout-block__title" id="block-revisao">
@@ -181,7 +192,7 @@ export function CartPage({ onBack }: CartPageProps) {
             type="button"
             className="button button--whatsapp checkout-bar__cta"
             onClick={handleFinalize}
-            disabled={!canFinalize || submitting}
+            disabled={!canFinalize || submitting || paymentsLoading || !!paymentsError || paymentMethods.length === 0}
           >
             {submitting ? 'Registrando pedido…' : 'Finalizar no WhatsApp'}
           </button>

@@ -71,4 +71,6 @@ export interface CheckoutData {
   neighborhood: string
   notes: string
   paymentMethod: string
+  needsChange?: boolean
+  changeForCents?: number
 }

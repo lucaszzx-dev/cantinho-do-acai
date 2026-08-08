@@ -34,11 +34,12 @@ export const STORE = {
     value: 'Taboão da Serra – SP',
     pending: true,
   },
-  /** MOCK — pending official payment methods. */
+  /** Pending commercial configuration: the administrator activates methods. */
   paymentMethods: [
-    { id: 'pix', label: 'Pix' },
-    { id: 'dinheiro', label: 'Dinheiro' },
-    { id: 'cartao', label: 'Cartão de crédito / débito (na entrega)' },
+    { id: 'pix', label: 'Pix', active: false, order: 0, instruction: '', pixKey: '' },
+    { id: 'cash', label: 'Dinheiro', active: false, order: 1, instruction: '', pixKey: '' },
+    { id: 'debit', label: 'Débito', active: false, order: 2, instruction: '', pixKey: '' },
+    { id: 'credit', label: 'Crédito', active: false, order: 3, instruction: '', pixKey: '' },
   ],
   /** MOCK — pending delivery fee rules by neighborhood. */
   deliveryNote:
