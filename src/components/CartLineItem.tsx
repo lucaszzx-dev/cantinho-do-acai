@@ -3,6 +3,8 @@ import { useCart } from '../hooks/useCart'
 import { formatCurrency } from '../utils/format'
 import { itemSubtotal } from '../utils/cart'
 import { PRODUCTS } from '../data/products'
+import { productImageFor } from '../data/productImages'
+import { ProductImage } from './ProductImage'
 
 export function CartLineItem({ item }: { item: CartItem }) {
   const { increaseQuantity, decreaseQuantity, removeItem } = useCart()
@@ -21,9 +23,7 @@ export function CartLineItem({ item }: { item: CartItem }) {
 
   return (
     <li className="cart-line">
-      <div className="cart-line__thumb" aria-hidden="true">
-        <span>🍧</span>
-      </div>
+      <div className="cart-line__thumb"><ProductImage alt={item.productName} src={productImageFor(item.productId, item.productImage)} /></div>
       <div className="cart-line__content">
         <div className="cart-line__top">
           <p className="cart-line__name">{item.productName}</p>

@@ -1,23 +1,8 @@
 import type { Product } from '../types/domain'
+import { productImageFor } from './productImages'
 
 // Stable public paths are shared by the browser and the backend seed.
-const imgAcai = '/products/acai.avif'
-const imgAcai1 = '/products/acai1.avif'
-const imgAcai2 = '/products/acai2.avif'
-const imgAcai3 = '/products/acai3.avif'
-const imgAcai4 = '/products/acai4.avif'
-const imgAcai5 = '/products/acai5.avif'
-const imgAcai6 = '/products/acai6.avif'
-const imgAcai8 = '/products/acai8.avif'
-const imgAcai9 = '/products/acai9.avif'
-const imgAcai10 = '/products/acai10.avif'
-const imgAcai11 = '/products/acai11.avif'
-const imgAgua = '/products/agua.avif'
-const imgAguaGas = '/products/aguagas.avif'
-const imgFondue = '/products/fondue.jpeg'
-const imgCopoDoceDeLeite = '/products/copo-doce-de-leite.jpeg'
-const imgCopoChocolateAmendoim = '/products/copo-chocolate-amendoim.jpeg'
-const imgCopoMorangoUva = '/products/copo-morango-uva.jpeg'
+const image = productImageFor
 
 const DESCARVEIS = {
   id: 'descartaveis',
@@ -88,7 +73,7 @@ export const PRODUCTS: Product[] = [
     subtitle: 'Monte do seu jeito',
     description:
       'Açaí cremoso e bem gelado, preparado na hora do jeitinho que você gosta! Escolha até 3 acompanhamentos grátis por cima do açaí. Acompanhamentos enviados separados serão cobrados à parte.',
-    image: imgAcai,
+    image: image('acai-tradicional'),
     category: 'monte-seu-acai',
     available: true,
     price: 17.9,
@@ -123,7 +108,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí Morango com Creme de Avelã',
     description:
       'A combinação perfeita do açaí cremoso com morangos frescos, leite condensado e delicioso creme de avelã, trazendo um sabor irresistível e marcante.',
-    image: imgAcai1,
+    image: image('acai-morango-creme-avela'),
     category: 'acai-premium',
     available: true,
     price: 20.9,
@@ -137,7 +122,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí Beijinho',
     description:
       'Delicioso açaí cremoso combinado com creme de chocolate branco, leite em pó e bala tipo Fini beijinho, trazendo um sabor doce, suave e irresistível em cada colherada.',
-    image: imgAcai2,
+    image: image('acai-beijinho'),
     category: 'acai-premium',
     available: true,
     price: 23.9,
@@ -151,7 +136,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí Confete',
     description:
       'Perfeito para quem ama um toque divertido e doce, com deliciosos confetes crocantes que deixam seu açaí ainda mais especial e camada de creme de avelã.',
-    image: imgAcai3,
+    image: image('acai-confete'),
     category: 'acai-premium',
     available: true,
     price: 25.9,
@@ -165,7 +150,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí Bis',
     description:
       'Açaí super cremoso acompanhado de camada de creme de avelã e pedaços crocantes de Bis, trazendo a combinação ideal entre cremosidade e crocância.',
-    image: imgAcai4,
+    image: image('acai-bis'),
     category: 'acai-premium',
     available: true,
     price: 25.9,
@@ -179,7 +164,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí Granola',
     description:
       'A opção perfeita para quem gosta de equilíbrio, com granola crocante e leite condensado que deixa seu copo ainda mais saboroso e especial.',
-    image: imgAcai5,
+    image: image('acai-granola'),
     category: 'acai-premium',
     available: true,
     price: 20.9,
@@ -193,7 +178,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí Ferrero',
     description:
       'Açaí cremoso combinado com creme de avelã, amendoim e pedaços de Ferrero Rocher, trazendo uma mistura perfeita de chocolate, avelã e crocância em cada colherada.',
-    image: imgAcai6,
+    image: image('acai-ferrero'),
     category: 'acai-premium',
     available: true,
     price: 25.9,
@@ -207,7 +192,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí Trento',
     description:
       'Delicioso açaí com pedaços crocantes de Trento com camada de creme de avelã, proporcionando uma mistura perfeita de chocolate e cremosidade.',
-    image: imgAcai8,
+    image: image('acai-trento'),
     category: 'acai-premium',
     available: true,
     price: 25.9,
@@ -221,7 +206,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí Kit Kat',
     description:
       'A união perfeita entre açaí e o crocante irresistível do Kit Kat, com camada de creme de avelã, criando uma sobremesa deliciosa e marcante.',
-    image: imgAcai9,
+    image: image('acai-kit-kat'),
     category: 'acai-premium',
     available: true,
     price: 25.9,
@@ -235,7 +220,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí Uva e Morango',
     description:
       'Uma combinação refrescante e saborosa com uvas selecionadas, morangos frescos, leite condensado e muito açaí cremoso.',
-    image: imgAcai10,
+    image: image('acai-uva-morango'),
     category: 'acai-premium',
     available: true,
     price: 21.9,
@@ -251,7 +236,7 @@ export const PRODUCTS: Product[] = [
     name: 'Açaí na Garrafa | 300ml',
     description:
       'Bebida cremosa, refrescante e perfeita para qualquer momento do dia.',
-    image: imgAcai11,
+    image: image('acai-garrafa-300'),
     category: 'acai-na-garrafa',
     available: true,
     price: 16,
@@ -265,7 +250,7 @@ export const PRODUCTS: Product[] = [
     id: 'copo-doce-de-leite',
     slug: 'copo-da-felicidade-doce-de-leite',
     name: 'Copo da Felicidade Doce de Leite',
-    image: imgCopoDoceDeLeite,
+    image: image('copo-doce-de-leite'),
     price: 17,
     fromPrice: false,
     category: 'copo-da-felicidade',
@@ -277,7 +262,7 @@ export const PRODUCTS: Product[] = [
     id: 'copo-chocolate-amendoim',
     slug: 'copo-da-felicidade-chocolate-amendoim',
     name: 'Copo da Felicidade Creme de Chocolate com Amendoim',
-    image: imgCopoChocolateAmendoim,
+    image: image('copo-chocolate-amendoim'),
     price: 17,
     fromPrice: false,
     category: 'copo-da-felicidade',
@@ -289,7 +274,7 @@ export const PRODUCTS: Product[] = [
     id: 'copo-premium-morango-uva',
     slug: 'copo-da-felicidade-premium-morangos-e-uva',
     name: 'Copo da Felicidade Premium Morangos e Uva',
-    image: imgCopoMorangoUva,
+    image: image('copo-premium-morango-uva'),
     price: 18,
     fromPrice: false,
     category: 'copo-da-felicidade',
@@ -305,7 +290,7 @@ export const PRODUCTS: Product[] = [
     name: 'Fondue na Roleta',
     description:
       'Uma combinação de brownie, creme de avelã, creme de ninho, uva verde e morangos.',
-    image: imgFondue,
+    image: image('fondue-na-roleta'),
     price: 25.9,
     fromPrice: false,
     category: 'fondue',
@@ -319,7 +304,7 @@ export const PRODUCTS: Product[] = [
     id: 'agua-sem-gas',
     slug: 'agua-sem-gas',
     name: 'Água sem Gás',
-    image: imgAgua,
+    image: image('agua-sem-gas'),
     price: 4.99,
     fromPrice: false,
     category: 'bebidas',
@@ -331,7 +316,7 @@ export const PRODUCTS: Product[] = [
     id: 'agua-com-gas',
     slug: 'agua-com-gas',
     name: 'Água com Gás',
-    image: imgAguaGas,
+    image: image('agua-com-gas'),
     price: 5.99,
     fromPrice: false,
     category: 'bebidas',
