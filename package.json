@@ -1,6 +1,7 @@
 {
   "name": "acai",
   "private": true,
+  "packageManager": "pnpm@11.18.0",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
