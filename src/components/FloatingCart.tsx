@@ -11,15 +11,13 @@ export function FloatingCart({ onOpen }: FloatingCartProps) {
   const count = cartItemCount(items)
   const total = cartTotal(items)
 
-  if (count === 0) return null
-
   return (
     <button type="button" className="floating-cart" onClick={onOpen}>
       <span className="floating-cart__count" aria-hidden="true">
         {count}
       </span>
-      <span className="floating-cart__label">Ver carrinho</span>
-      <span className="floating-cart__total">{formatCurrency(total)}</span>
+      <span className="floating-cart__label">Carrinho</span>
+      <span className="floating-cart__total">{count === 0 ? '0 itens' : `${count} itens • ${formatCurrency(total)}`}</span>
     </button>
   )
 }
