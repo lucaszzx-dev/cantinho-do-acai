@@ -16,6 +16,7 @@ export function ProductDetailsModal({ product, onClose, onAdded }: ProductDetail
   const [quantity, setQuantity] = useState(1)
 
   const handleAdd = () => {
+    if (!product.available) return
     addItem({
       productId: product.id,
       productName: product.name,
@@ -80,6 +81,7 @@ export function ProductDetailsModal({ product, onClose, onAdded }: ProductDetail
           type="button"
           className="button button--primary button--lg"
           onClick={handleAdd}
+          disabled={!product.available}
         >
           Adicionar {quantity > 1 ? `${quantity}x ` : ''}ao carrinho
         </button>

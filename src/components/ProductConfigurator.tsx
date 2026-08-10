@@ -72,6 +72,7 @@ export function ProductConfigurator({ product, onClose, onAdded }: ProductConfig
   })()
 
   function handleSubmit() {
+    if (!product.available) return
     if (!selectedVariant && product.variants.length > 0) return
     addItem({
       productId: product.id,
@@ -208,7 +209,7 @@ export function ProductConfigurator({ product, onClose, onAdded }: ProductConfig
               Continuar
             </button>
           ) : (
-            <button type="button" className="button button--primary" onClick={handleSubmit}>
+            <button type="button" className="button button--primary" onClick={handleSubmit} disabled={!product.available}>
               Adicionar ao carrinho
             </button>
           )}

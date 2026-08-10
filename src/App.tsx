@@ -78,6 +78,10 @@ function MenuPage() {
   }
 
   const handleChoose = (product: Product) => {
+    if (!product.available) {
+      showToast('Produto indisponível no momento.')
+      return
+    }
     setSelectedProduct(product)
   }
 

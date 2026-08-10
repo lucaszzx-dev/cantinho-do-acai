@@ -35,9 +35,7 @@ export function ProductCard({ product, onChoose }: ProductCardProps) {
                 ? 'Montar'
                 : 'Escolher'}
             </button>
-          ) : (
-            <span className="product-card__unavailable">Indisponível</span>
-          )}
+          ) : <><span className="product-card__unavailable">Indisponível no momento</span><button type="button" className="button product-card__choose" disabled aria-disabled="true">Indisponível</button></>}
         </div>
       </div>
     </article>

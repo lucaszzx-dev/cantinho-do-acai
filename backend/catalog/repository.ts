@@ -28,12 +28,12 @@ export const postgresCatalogRepository: CatalogRepository = {
     return db.select({ id: categories.id, slug: categories.slug, name: categories.name, subtitle: categories.subtitle }).from(categories).where(eq(categories.active, true)).orderBy(asc(categories.sortOrder))
   },
   async getProducts() {
-    const allProducts = await db.select().from(products).where(eq(products.active, true)).orderBy(asc(products.sortOrder))
+    const allProducts = await db.select().from(products).orderBy(asc(products.sortOrder))
     return Promise.all(allProducts.map((product) => this.getProductBySlug(product.slug)))
   },
   async getProductBySlug(slug) {
     const [product] = await db.select().from(products).where(eq(products.slug, slug)).limit(1)
-    if (!product || !product.active) return undefined
+    if (!product) return undefined
     const [category] = await db.select().from(categories).where(eq(categories.id, product.categoryId)).limit(1)
     if (!category) return undefined
     const [variants, groups] = await Promise.all([
