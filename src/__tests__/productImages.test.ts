@@ -12,6 +12,7 @@ describe('product image mapping', () => {
   })
 
   it('keeps Premium products on their respective images', () => {
+    expect(productImageFor('acai-beijinho')).toBe('/images/products/acai-beijinho.png')
     expect(productImageFor('acai-ferrero')).toBe('/images/products/acai-ferrero-rocher.png')
     expect(productImageFor('acai-kit-kat')).toBe('/images/products/acai-kitkat.png')
   })

@@ -19,6 +19,10 @@ describe('catalog API', () => {
     expect((await app.inject({ method: 'PUT', url: '/api/admin/payments', payload: [] })).statusCode).toBe(401)
   })
   it('does not reveal orders to malformed public tracking tokens', async () => { expect((await app.inject('/api/orders/public/not-a-valid-token')).statusCode).toBe(404) })
+  it('rejects invalid customer registration and protects customer session', async () => {
+    expect((await app.inject({ method: 'POST', url: '/api/customers/auth/register', payload: { name: 'A', phone: '1', email: 'invalid', password: 'short' } })).statusCode).toBe(400)
+    expect((await app.inject('/api/customers/auth/me')).statusCode).toBe(401)
+  })
 })
 
 describe('seed identities', () => {

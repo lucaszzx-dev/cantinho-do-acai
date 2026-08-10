@@ -389,7 +389,8 @@ textarea:focus-visible {
 .product-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
   display: block;
 }
 
@@ -1328,4 +1329,16 @@ textarea:focus-visible {
 .admin-order { width: 100%; display: grid; grid-template-columns: 70px 1fr auto; gap: 10px; text-align: left; padding: 12px; margin-top: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; }.admin-order--pending { border-color: #f59e0b; background: #fffbeb; }.admin-order-detail { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }.admin-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }.admin-actions .button { font-size: .8rem; padding: 9px 12px; }
 .admin-panel form { display: grid; gap: 14px; max-width: 520px; }.admin-panel label { display: grid; gap: 6px; font-weight: 700; }.admin-panel input { border: 1px solid var(--border); border-radius: 8px; padding: 10px; font: inherit; }.admin-message { padding: 12px; background: var(--purple-50); border: 1px solid var(--purple-200); color: var(--purple-900); border-radius: var(--radius-sm); }
 @media (max-width: 520px) { .admin-row { grid-template-columns: 1fr auto; }.admin-row > input { grid-column: 1 / -1; width: 100%; } }
+
+/* Keep full product photos visible across the catalogue and home showcase. */
+.product-image--card img { padding: 4px; }
+.product-image--hero img { padding: 12px; }
+.product-story__visual img { object-fit: contain; object-position: center; }
+.showcase-product img { object-fit: cover; object-position: center; background: #fff; }
+.product-card .product-image--card img { object-fit: cover; padding: 0; }
+.cart-line__thumb .product-image img { object-fit: contain; padding: 3px; }
+.home-feature { max-width: 840px; margin-top: 36px; grid-template-columns: 280px 1fr; }
+.home-feature > img { min-height: 190px; height: 220px; object-fit: contain; object-position: center; background: #fff; }
+.home-feature > div { padding: 20px; }
+@media (max-width: 700px) { .home-feature { grid-template-columns: 1fr; margin-top: 28px; } .home-feature > img { height: 210px; max-height: 210px; } }
 
