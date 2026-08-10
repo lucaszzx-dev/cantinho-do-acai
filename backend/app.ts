@@ -16,7 +16,7 @@ import { paymentMethodsSchema, publicPaymentMethods } from './payments.js'
 
 export function buildApp(repository: CatalogRepository = postgresCatalogRepository) {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info', redact: ['req.headers.authorization'] } })
-  app.register(cors, { origin: env.FRONTEND_ORIGIN, credentials: true })
+  app.register(cors, { origin: env.FRONTEND_ORIGIN, credentials: true, methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'OPTIONS'] })
   app.register(cookie, { secret: env.ADMIN_SESSION_SECRET ?? 'development-only-change-me' })
   app.register(rateLimit, { global: false })
   const customerCookie = 'cantinho_customer'

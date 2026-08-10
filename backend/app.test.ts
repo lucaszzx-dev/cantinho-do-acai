@@ -18,6 +18,12 @@ describe('catalog API', () => {
     expect((await app.inject('/api/admin/payments')).statusCode).toBe(401)
     expect((await app.inject({ method: 'PUT', url: '/api/admin/payments', payload: [] })).statusCode).toBe(401)
   })
+  it('allows credentialed browser preflight for admin payment updates', async () => {
+    const response = await app.inject({ method: 'OPTIONS', url: '/api/admin/payments', headers: { origin: 'http://localhost:5173', 'access-control-request-method': 'PUT', 'access-control-request-headers': 'content-type' } })
+    expect(response.statusCode).toBe(204)
+    expect(response.headers['access-control-allow-methods']).toContain('PUT')
+    expect(response.headers['access-control-allow-credentials']).toBe('true')
+  })
   it('does not reveal orders to malformed public tracking tokens', async () => { expect((await app.inject('/api/orders/public/not-a-valid-token')).statusCode).toBe(404) })
   it('rejects invalid customer registration and protects customer session', async () => {
     expect((await app.inject({ method: 'POST', url: '/api/customers/auth/register', payload: { name: 'A', phone: '1', email: 'invalid', password: 'short' } })).statusCode).toBe(400)
