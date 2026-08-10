@@ -4,6 +4,6 @@ export async function apiRequest(path: string, init: RequestInit = {}) {
   return fetch(`${apiUrl}${path}`, {
     credentials: 'include',
     ...init,
-    headers: { 'content-type': 'application/json', ...init.headers },
+    headers: { ...(init.body === undefined ? {} : { 'content-type': 'application/json' }), ...init.headers },
   })
 }

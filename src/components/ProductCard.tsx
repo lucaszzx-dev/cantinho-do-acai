@@ -13,7 +13,7 @@ export function ProductCard({ product, onChoose }: ProductCardProps) {
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <article className={`product-card ${product.available ? '' : 'product-card--disabled'} ${expanded ? 'is-expanded' : ''}`} tabIndex={0} onClick={() => setExpanded((value) => !value)}>
+    <article className={`product-card product-card--${product.category} ${product.available ? '' : 'product-card--disabled'} ${expanded ? 'is-expanded' : ''}`} tabIndex={0} onClick={() => setExpanded((value) => !value)}>
       <ProductImage alt={product.name} src={product.image} />
       <div className="product-card__body">
         <h3 className="product-card__name">{product.name}</h3>
