@@ -2,6 +2,7 @@ import { asc, eq } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { categories, optionGroups, productOptions, products, productVariants, storeConfig } from '../db/schema.js'
 import { storeStatus, type Schedule } from '../store-status.js'
+import { productImageFor } from '../../src/data/productImages.ts'
 
 export type CatalogRepository = {
   getStore(): Promise<unknown>
@@ -12,7 +13,7 @@ export type CatalogRepository = {
 
 const cents = (value: number) => value / 100
 const mapProduct = (product: typeof products.$inferSelect, category: typeof categories.$inferSelect, variants: (typeof productVariants.$inferSelect)[], groups: (typeof optionGroups.$inferSelect)[], options: (typeof productOptions.$inferSelect)[]) => ({
-  id: product.id, slug: product.slug, name: product.name, subtitle: product.subtitle ?? undefined, description: product.description ?? undefined, image: product.image ?? undefined, category: category.id, available: product.active, price: cents(product.basePriceCents), fromPrice: product.fromPrice,
+  id: product.id, slug: product.slug, name: product.name, subtitle: product.subtitle ?? undefined, description: product.description ?? undefined, image: productImageFor(product.id, product.image ?? undefined), category: category.id, available: product.active, price: cents(product.basePriceCents), fromPrice: product.fromPrice,
   variants: variants.filter((item) => item.active).map((item) => ({ id: item.id.slice(product.id.length + 1), name: item.name, price: cents(item.priceCents) })),
   optionGroups: groups.map((group) => ({ id: group.id, label: group.label, hint: group.hint ?? undefined, type: group.type, required: group.required, minSelectable: group.minSelectable || undefined, maxSelectable: group.maxSelectable ?? undefined, options: options.filter((item) => item.optionGroupId === group.id && item.active).map((item) => ({ id: item.id, name: item.name, price: cents(item.priceCents) })) })),
 })

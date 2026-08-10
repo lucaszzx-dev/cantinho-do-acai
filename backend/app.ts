@@ -11,7 +11,7 @@ import { categories, orders, products, storeConfig } from './db/schema.js'
 import { desc, eq, sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { adminCookie, authenticateAdmin } from './admin-auth.js'
-import { createOrder, getOrder, getPublicOrder, orderStatuses, updateOrderStatus } from './orders.js'
+import { createOrder, getCustomerOrders, getOrder, getPublicOrder, orderStatuses, updateOrderStatus } from './orders.js'
 import { paymentMethodsSchema, publicPaymentMethods } from './payments.js'
 
 export function buildApp(repository: CatalogRepository = postgresCatalogRepository) {
@@ -97,6 +97,7 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
   app.post('/api/customers/auth/login', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => { const input = z.object({ email: z.string().email(), password: z.string().min(8).max(128) }).parse(request.body); const customer = await authenticateCustomer(input.email, input.password); if (!customer) return reply.status(401).send({ error: 'invalid_credentials' }); reply.setCookie(customerCookie, customer.id, { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production', signed: true, maxAge: 60 * 60 * 24 * 30 }); return { id: customer.id, name: customer.name, phone: customer.phone, email: customer.email } })
   app.post('/api/customers/auth/logout', async (_request, reply) => { reply.clearCookie(customerCookie, { path: '/' }); return { ok: true } })
   app.get('/api/customers/auth/me', async (request, reply) => { const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'customer_unauthorized' }); const customer = await getCustomer(session.value); return customer ? { id: customer.id, name: customer.name, phone: customer.phone, email: customer.email } : reply.status(401).send({ error: 'customer_unauthorized' }) })
+  app.get('/api/customers/me/orders', async (request, reply) => { const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'customer_unauthorized' }); return getCustomerOrders(session.value) })
   app.get('/api/customers/:id', async (request, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(request.params)
     const customer = await getCustomer(id)
