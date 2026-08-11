@@ -1387,5 +1387,21 @@ textarea:focus-visible {
 .product-story__orb { inset:9% 12%; border-radius:50%; transform:none; }
 .product-story__ring { inset:15% 17%; }
 @media(max-width:700px){.product-story__visual{overflow:visible;padding:0;border-radius:0}.product-story__orb{inset:8% 11%}.product-story__ring{inset:14% 16%}}
+
+/* Canonical hero/story geometry: asset and interaction layers share one coordinate space. */
+.hero-art { position:relative; left:50%; width:100vw; min-height:0; height:auto; aspect-ratio:3 / 2; margin:-18px 0 0; transform:translateX(-50%); overflow:hidden; }
+.hero-art > img { width:100%; height:100%; object-fit:fill; object-position:initial; }
+.hero-hotspot { bottom:25%; height:7%; }
+.hero-hotspot--menu { left:8%; width:16%; }.hero-hotspot--order { left:25%; width:17%; }
+@media(max-width:700px){.hero-art{min-height:0;height:auto;aspect-ratio:3 / 2;margin:-18px 0 0}.hero-art>img{height:100%;object-position:initial}.hero-hotspot{display:none}}
+
+/* Canonical product story composition: static layers, centred around the large photo. */
+.product-story { position:relative; left:50%; width:100vw; margin:0; transform:translateX(-50%); height:auto; background:#2e1065; }
+.product-story__sticky { position:relative; top:auto; display:grid; grid-template-columns:minmax(0,.82fr) minmax(460px,1.18fr); align-items:center; gap:clamp(28px,5vw,70px); min-height:clamp(620px,72vh,760px); max-width:1280px; margin:0 auto; padding:clamp(40px,6vw,86px); overflow:visible; border-radius:0; background:transparent; }
+.product-story__copy { align-self:center; }.product-story__visual { position:relative; min-height:500px; display:grid; place-items:center; overflow:visible; isolation:isolate; }
+.product-story__visual img { position:relative; z-index:2; width:min(520px,100%); height:min(520px,62vw); object-fit:contain; object-position:center; transform:none; border-radius:30px; box-shadow:0 25px 55px rgba(0,0,0,.34); }
+.product-story__orb { position:absolute; z-index:0; inset:9% 12%; border-radius:50%; transform:none; }.product-story__ring { position:absolute; z-index:1; inset:15% 17%; transform:rotate(18deg); }
+.product-story__copy::after { content:'Monte do seu jeito.' !important; }
+@media(max-width:700px){.product-story{left:50%;width:100vw;transform:translateX(-50%)}.product-story__sticky{grid-template-columns:1fr;min-height:0;padding:42px 24px;gap:16px}.product-story__visual{min-height:390px}.product-story__visual img{width:min(390px,92vw);height:380px}.product-story__orb{inset:8% 11%}.product-story__ring{inset:14% 16%}}
 .orders-page{max-width:840px;margin:0 auto;padding:32px 18px 70px}.orders-page__header{margin:24px 0}.orders-page__header p{margin:0;color:var(--purple-700);font-weight:800}.orders-page__header h1{margin:4px 0;color:var(--purple-900)}.orders-page__header span{color:var(--muted)}.orders-list{display:grid;gap:12px}.order-card{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:18px;border:1px solid var(--border);border-radius:var(--radius-md);background:#fff;box-shadow:var(--shadow-sm)}.order-card p{margin:3px 0;color:var(--muted)}.order-card .button{justify-self:start}.order-card__status{padding:6px 10px;border-radius:999px;background:var(--purple-100);color:var(--purple-800);font-size:.82rem;font-weight:800}.orders-empty{text-align:center;margin-top:48px;padding:52px 20px;border:1px dashed var(--purple-300);border-radius:var(--radius-md);background:var(--purple-50)}.orders-empty span{font-size:48px}.orders-empty h2{color:var(--purple-900)}.orders-empty p{color:var(--muted);margin-bottom:20px}@media(max-width:520px){.order-card{grid-template-columns:1fr}.order-card__status{justify-self:start}}
 
