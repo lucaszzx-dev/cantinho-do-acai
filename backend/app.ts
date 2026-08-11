@@ -7,8 +7,8 @@ import { env } from './env.js'
 import { postgresCatalogRepository, type CatalogRepository } from './catalog/repository.js'
 import { authenticateCustomer, createCustomerSession, getCustomer, registerCustomer } from './customers.js'
 import { db } from './db/client.js'
-import { categories, orders, products, storeConfig } from './db/schema.js'
-import { desc, eq, sql } from 'drizzle-orm'
+import { categories, optionGroups, orders, productOptions, products, productVariants, storeConfig } from './db/schema.js'
+import { asc, desc, eq, sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { adminCookie, authenticateAdmin } from './admin-auth.js'
 import { createOrder, getCustomerOrders, getOrder, getPublicOrder, orderStatuses, updateOrderStatus } from './orders.js'
@@ -16,7 +16,7 @@ import { paymentMethodsSchema, publicPaymentMethods } from './payments.js'
 
 export function buildApp(repository: CatalogRepository = postgresCatalogRepository) {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info', redact: ['req.headers.authorization'] } })
-  app.register(cors, { origin: env.FRONTEND_ORIGIN, credentials: true, methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'OPTIONS'] })
+  app.register(cors, { origin: env.FRONTEND_ORIGIN, credentials: true, methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] })
   app.register(cookie, { secret: env.ADMIN_SESSION_SECRET ?? 'development-only-change-me' })
   app.register(rateLimit, { global: false })
   const customerCookie = 'cantinho_customer'
@@ -59,7 +59,7 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
   app.post('/api/admin/auth/logout', async (_request, reply) => { reply.clearCookie(adminCookie, { path: '/' }); return { ok: true } })
   app.get('/api/admin/auth/me', async (request, reply) => { const session = request.unsignCookie(request.cookies[adminCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'admin_unauthorized' }); return { id: session.value } })
   const productInput = z.object({ name: z.string().min(2), slug: z.string().min(2), categoryId: z.string().min(1), description: z.string().optional(), image: z.string().optional(), active: z.boolean().default(true), sortOrder: z.number().int().nonnegative().default(0), price: z.number().nonnegative(), fromPrice: z.boolean().default(false) })
-  app.get('/api/admin/products', async () => repository.getProducts())
+  app.get('/api/admin/products', async () => db.select().from(products).orderBy(asc(products.sortOrder)))
   app.get('/api/admin/orders', async () => db.select().from(orders).orderBy(desc(orders.createdAt)).limit(100))
   app.post('/api/admin/products', async (request, reply) => {
     const input = productInput.parse(request.body)
@@ -72,12 +72,31 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
     const [product] = await db.update(products).set({ ...input, ...(input.price === undefined ? {} : { basePriceCents: Math.round(input.price * 100) }), updatedAt: new Date() }).where(eq(products.id, id)).returning()
     return product ?? reply.status(404).send({ error: 'product_not_found' })
   })
-  app.get('/api/admin/categories', async () => repository.getCategories())
+  app.get('/api/admin/categories', async () => db.select().from(categories).orderBy(asc(categories.sortOrder)))
+  app.post('/api/admin/categories', async (request, reply) => {
+    const input = z.object({ name: z.string().min(2), slug: z.string().min(2), subtitle: z.string().optional(), sortOrder: z.number().int().nonnegative().default(0), active: z.boolean().default(true) }).parse(request.body)
+    const [category] = await db.insert(categories).values({ id: randomUUID(), ...input }).returning()
+    return reply.status(201).send(category)
+  })
   app.patch('/api/admin/categories/:id', async (request, reply) => {
     const { id } = z.object({ id: z.string().min(1) }).parse(request.params)
-    const input = z.object({ name: z.string().min(2).optional(), subtitle: z.string().nullable().optional(), sortOrder: z.number().int().nonnegative().optional(), active: z.boolean().optional() }).parse(request.body)
+    const input = z.object({ name: z.string().min(2).optional(), slug: z.string().min(2).optional(), subtitle: z.string().nullable().optional(), sortOrder: z.number().int().nonnegative().optional(), active: z.boolean().optional() }).parse(request.body)
     const [category] = await db.update(categories).set({ ...input, updatedAt: new Date() }).where(eq(categories.id, id)).returning()
     return category ?? reply.status(404).send({ error: 'category_not_found' })
+  })
+  app.get('/api/admin/products/:id/variants', async (request) => { const { id } = z.object({ id: z.string().min(1) }).parse(request.params); return db.select().from(productVariants).where(eq(productVariants.productId, id)).orderBy(asc(productVariants.sortOrder)) })
+  app.post('/api/admin/products/:id/variants', async (request, reply) => { const { id } = z.object({ id: z.string().min(1) }).parse(request.params); const input = z.object({ name: z.string().min(1), priceCents: z.number().int().nonnegative(), sortOrder: z.number().int().nonnegative(), active: z.boolean().default(true) }).parse(request.body); const [variant] = await db.insert(productVariants).values({ id: `${id}:${randomUUID()}`, productId: id, ...input }).returning(); return reply.status(201).send(variant) })
+  app.patch('/api/admin/variants/:id', async (request, reply) => { const input = z.object({ name: z.string().min(1).optional(), priceCents: z.number().int().nonnegative().optional(), sortOrder: z.number().int().nonnegative().optional(), active: z.boolean().optional() }).parse(request.body); const [row] = await db.update(productVariants).set(input).where(eq(productVariants.id, z.object({ id: z.string().min(1) }).parse(request.params).id)).returning(); return row ?? reply.status(404).send({ error: 'variant_not_found' }) })
+  const groupInput = z.object({ label: z.string().min(1), hint: z.string().optional(), type: z.enum(['single', 'multi']), required: z.boolean().default(false), minSelectable: z.number().int().nonnegative().default(0), maxSelectable: z.number().int().nonnegative().nullable().optional(), active: z.boolean().default(true), sortOrder: z.number().int().nonnegative().default(0) })
+  app.get('/api/admin/products/:id/options', async (request) => { const id = z.object({ id: z.string().min(1) }).parse(request.params).id; const groups = await db.select().from(optionGroups).where(eq(optionGroups.productId, id)).orderBy(asc(optionGroups.sortOrder)); const options = groups.length ? await db.select().from(productOptions).orderBy(asc(productOptions.sortOrder)) : []; return groups.map((group) => ({ ...group, options: options.filter((option) => option.optionGroupId === group.id) })) })
+  app.post('/api/admin/products/:id/option-groups', async (request, reply) => { const id = z.object({ id: z.string().min(1) }).parse(request.params).id; const [row] = await db.insert(optionGroups).values({ id: `${id}:${randomUUID()}`, productId: id, ...groupInput.parse(request.body) }).returning(); return reply.status(201).send(row) })
+  app.patch('/api/admin/option-groups/:id', async (request, reply) => { const [row] = await db.update(optionGroups).set(groupInput.partial().parse(request.body)).where(eq(optionGroups.id, z.object({ id: z.string().min(1) }).parse(request.params).id)).returning(); return row ?? reply.status(404).send({ error: 'group_not_found' }) })
+  app.post('/api/admin/option-groups/:id/options', async (request, reply) => { const id = z.object({ id: z.string().min(1) }).parse(request.params).id; const input = z.object({ name: z.string().min(1), priceCents: z.number().int().nonnegative(), sortOrder: z.number().int().nonnegative().default(0), active: z.boolean().default(true) }).parse(request.body); const [row] = await db.insert(productOptions).values({ id: `${id}:${randomUUID()}`, optionGroupId: id, ...input }).returning(); return reply.status(201).send(row) })
+  app.patch('/api/admin/options/:id', async (request, reply) => { const input = z.object({ name: z.string().min(1).optional(), priceCents: z.number().int().nonnegative().optional(), sortOrder: z.number().int().nonnegative().optional(), active: z.boolean().optional() }).parse(request.body); const [row] = await db.update(productOptions).set(input).where(eq(productOptions.id, z.object({ id: z.string().min(1) }).parse(request.params).id)).returning(); return row ?? reply.status(404).send({ error: 'option_not_found' }) })
+  app.delete('/api/admin/products/:id', async (request, reply) => {
+    const { id } = z.object({ id: z.string().min(1) }).parse(request.params)
+    const [product] = await db.update(products).set({ active: false, archived: true, updatedAt: new Date() }).where(eq(products.id, id)).returning()
+    return product ? { ...product, archived: true } : reply.status(404).send({ error: 'product_not_found' })
   })
   app.get('/api/admin/store', async () => repository.getStore())
   app.get('/api/admin/payments', async () => { const [store] = await db.select({ paymentMethods: storeConfig.paymentMethods }).from(storeConfig).where(eq(storeConfig.id, 'default')).limit(1); return paymentMethodsSchema.parse(store?.paymentMethods) })

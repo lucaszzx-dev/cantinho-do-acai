@@ -45,6 +45,7 @@ export interface Product {
   available: boolean
   price: number
   fromPrice: boolean
+  sortOrder?: number
   variants: ProductVariant[]
   optionGroups: OptionGroup[]
 }
