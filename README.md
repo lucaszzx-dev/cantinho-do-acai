@@ -19,6 +19,8 @@ Frontend: `http://localhost:5173`. API: `http://localhost:3000`; health check:
 `pnpm build`, `pnpm lint`, `pnpm test`, `pnpm db:generate`, `pnpm db:migrate`,
 and `pnpm db:seed` are available from the repository root.
 
+Set `TRUST_PROXY_HOPS` to the number of trusted proxies in front of the API (for example, `1` for one CDN/load balancer). Keep it at `0` locally so rate limiting does not trust forwarded headers.
+
 The schema contains categories, products, variants, option groups, options and
 store configuration. The idempotent seed imports the existing frontend catalog,
 including its explicitly marked PENDING/MOCK store schedule, address, payment

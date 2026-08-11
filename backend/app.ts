@@ -1,5 +1,6 @@
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
+import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
 import Fastify from 'fastify'
 import { z } from 'zod'
@@ -7,24 +8,39 @@ import { env } from './env.js'
 import { postgresCatalogRepository, type CatalogRepository } from './catalog/repository.js'
 import { authenticateCustomer, createCustomerSession, getCustomer, registerCustomer } from './customers.js'
 import { db } from './db/client.js'
-import { categories, optionGroups, orders, productOptions, products, productVariants, storeConfig } from './db/schema.js'
+import { adminUsers, categories, optionGroups, orders, productOptions, products, productVariants, storeConfig } from './db/schema.js'
 import { asc, desc, eq, sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { adminCookie, authenticateAdmin } from './admin-auth.js'
 import { createOrder, getCustomerOrders, getOrder, getPublicOrder, orderStatuses, updateOrderStatus } from './orders.js'
 import { paymentMethodsSchema, publicPaymentMethods } from './payments.js'
+import { shouldWriteAdminAudit, writeAdminAudit } from './audit.js'
 
 export function buildApp(repository: CatalogRepository = postgresCatalogRepository) {
-  const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info', redact: ['req.headers.authorization'] } })
+  const app = Fastify({ trustProxy: env.TRUST_PROXY_HOPS > 0 ? env.TRUST_PROXY_HOPS : false, logger: { level: process.env.LOG_LEVEL ?? 'info', redact: ['req.headers.authorization'] } })
+  app.register(helmet, { contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], baseUri: ["'none'"], formAction: ["'none'"], frameAncestors: ["'none'"] } }, frameguard: { action: 'deny' }, referrerPolicy: { policy: 'no-referrer' }, strictTransportSecurity: process.env.NODE_ENV === 'production' ? { maxAge: 15_552_000, includeSubDomains: true } : false })
+  app.addHook('onSend', async (_request, reply) => { reply.header('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), payment=(), usb=()') })
   app.register(cors, { origin: env.FRONTEND_ORIGIN, credentials: true, methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] })
   app.register(cookie, { secret: env.ADMIN_SESSION_SECRET ?? 'development-only-change-me' })
   app.register(rateLimit, { global: false })
   const customerCookie = 'cantinho_customer'
   app.addHook('onRequest', async (request, reply) => {
+    const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+    const isProtectedMutation = request.url.startsWith('/api/admin/') || request.url.startsWith('/api/customers/')
+    const origin = request.headers.origin
+    if (isMutation && isProtectedMutation && origin && origin !== env.FRONTEND_ORIGIN) return reply.status(403).send({ error: 'invalid_origin' })
     if (!request.url.startsWith('/api/admin/') || request.url.startsWith('/api/admin/auth/')) return
     const session = request.unsignCookie(request.cookies[adminCookie] ?? '')
     if (!session.valid) return reply.status(401).send({ error: 'admin_unauthorized' })
+    const [admin] = await db.select({ id: adminUsers.id, active: adminUsers.active }).from(adminUsers).where(eq(adminUsers.id, session.value)).limit(1)
+    if (!admin?.active) { reply.clearCookie(adminCookie, { path: '/' }); return reply.status(401).send({ error: 'admin_unauthorized' }) }
     request.headers['x-admin-id'] = session.value
+  })
+  app.addHook('onResponse', async (request, reply) => {
+    const adminId = request.headers['x-admin-id']
+    const path = request.url.split('?')[0]
+    if (!shouldWriteAdminAudit(request.method, path, reply.statusCode, adminId)) return
+    await writeAdminAudit({ adminId: adminId as string, action: request.method.toLowerCase(), entityType: path.split('/').slice(3, -1).join('/') || 'admin', entityId: path.split('/').at(-1), metadata: { path } })
   })
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof z.ZodError) return reply.status(400).send({ error: 'invalid_request' })
@@ -45,7 +61,7 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
     return publicPaymentMethods(store?.paymentMethods)
   })
   const orderInput = z.object({ idempotencyKey: z.string().uuid(), customerId: z.string().uuid().optional(), customerName: z.string().min(2), phone: z.string().min(8), address: z.string().min(2), addressNumber: z.string().min(1), complement: z.string().optional(), neighborhood: z.string().min(2), notes: z.string().optional(), paymentMethod: z.string().min(2), needsChange: z.boolean().optional(), changeForCents: z.number().int().positive().optional(), items: z.array(z.object({ productId: z.string().min(1), variantId: z.string().optional(), quantity: z.number().int().positive(), selections: z.record(z.string(), z.array(z.string())) })).min(1) })
-  app.post('/api/orders', async (request, reply) => { try { const input = orderInput.parse(request.body); const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); const order = await createOrder({ ...input, customerId: session.valid ? session.value : undefined }); return reply.status(201).send({ orderNumber: order.number, publicAccessToken: order.publicAccessToken, status: order.status }) } catch (error) { if (error instanceof Error && /indisponível|Troco/.test(error.message)) return reply.status(400).send({ error: 'invalid_order', message: error.message }); throw error } })
+  app.post('/api/orders', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => { try { const input = orderInput.parse(request.body); const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); const order = await createOrder({ ...input, customerId: session.valid ? session.value : undefined }); return reply.status(201).send({ orderNumber: order.number, publicAccessToken: order.publicAccessToken, status: order.status }) } catch (error) { if (error instanceof Error && /indisponível|Troco/.test(error.message)) return reply.status(400).send({ error: 'invalid_order', message: error.message }); throw error } })
   app.get('/api/orders/public/:token', async (request, reply) => { const parsed = z.object({ token: z.string().min(32).max(128) }).safeParse(request.params); if (!parsed.success) return reply.status(404).send({ error: 'order_not_found' }); const order = await getPublicOrder(parsed.data.token); return order ? { number: order.number, status: order.status, paymentMethod: order.paymentMethod, totalCents: order.totalCents, items: order.items, history: order.history } : reply.status(404).send({ error: 'order_not_found' }) })
   app.get('/api/admin/orders/:id', async (request, reply) => { const { id } = z.object({ id: z.string().uuid() }).parse(request.params); return (await getOrder(id)) ?? reply.status(404).send({ error: 'order_not_found' }) })
   app.patch('/api/admin/orders/:id/status', async (request, reply) => { const { id } = z.object({ id: z.string().uuid() }).parse(request.params); const { status } = z.object({ status: z.enum(orderStatuses) }).parse(request.body); const order = await updateOrderStatus(id, status); return order ?? reply.status(409).send({ error: 'invalid_status_transition' }) })
@@ -106,7 +122,7 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
     const [store] = await db.update(storeConfig).set({ ...input, ...(input.minOrder === undefined ? {} : { minOrderCents: Math.round(input.minOrder * 100) }), updatedAt: new Date() }).where(eq(storeConfig.id, 'default')).returning()
     return store
   })
-  app.post('/api/customers/session', async (request, reply) => {
+  app.post('/api/customers/session', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const input = z.object({ name: z.string().trim().min(2).max(100), phone: z.string().min(8).max(30) }).parse(request.body)
     const customer = await createCustomerSession(input.name, input.phone)
     return reply.status(200).send({ id: customer.id, name: customer.name, phone: customer.phone })
@@ -117,11 +133,6 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
   app.post('/api/customers/auth/logout', async (_request, reply) => { reply.clearCookie(customerCookie, { path: '/' }); return { ok: true } })
   app.get('/api/customers/auth/me', async (request, reply) => { const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'customer_unauthorized' }); const customer = await getCustomer(session.value); return customer ? { id: customer.id, name: customer.name, phone: customer.phone, email: customer.email } : reply.status(401).send({ error: 'customer_unauthorized' }) })
   app.get('/api/customers/me/orders', async (request, reply) => { const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'customer_unauthorized' }); return getCustomerOrders(session.value) })
-  app.get('/api/customers/:id', async (request, reply) => {
-    const { id } = z.object({ id: z.string().uuid() }).parse(request.params)
-    const customer = await getCustomer(id)
-    return customer ? { id: customer.id, name: customer.name, phone: customer.phone } : reply.status(404).send({ error: 'customer_not_found' })
-  })
   app.get('/api/products/:slug', async (request, reply) => {
     const { slug } = z.object({ slug: z.string().min(1) }).parse(request.params)
     const product = await repository.getProductBySlug(slug)

@@ -13,12 +13,13 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx backend/seed.ts"
-    ,"admin:create": "tsx backend/create-admin.ts"
+    "db:seed": "tsx backend/seed.ts",
+    "admin:create": "tsx backend/create-admin.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.3.0",
+    "@fastify/helmet": "^13.1.0",
     "@fastify/rate-limit": "^11.2.0",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
