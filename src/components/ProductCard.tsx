@@ -10,6 +10,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onChoose }: ProductCardProps) {
   const priceLabel = `${product.fromPrice ? 'A partir de ' : ''}${formatCurrency(product.price)}`
+  const isBuildYourOwn = product.category === 'monte-seu-acai'
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -31,9 +32,7 @@ export function ProductCard({ product, onChoose }: ProductCardProps) {
               className="button button--primary product-card__choose"
               onClick={(event) => { event.stopPropagation(); onChoose(product) }}
             >
-              {product.variants.length > 0 || product.optionGroups.length > 0
-                ? 'Montar'
-                : 'Escolher'}
+              {isBuildYourOwn ? 'Montar' : 'Escolher'}
             </button>
           ) : <><span className="product-card__unavailable">Indisponível no momento</span><button type="button" className="button product-card__choose" disabled aria-disabled="true">Indisponível</button></>}
         </div>
