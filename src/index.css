@@ -1403,5 +1403,20 @@ textarea:focus-visible {
 .product-story__orb { position:absolute; z-index:0; inset:9% 12%; border-radius:50%; transform:none; }.product-story__ring { position:absolute; z-index:1; inset:15% 17%; transform:rotate(18deg); }
 .product-story__copy::after { content:'Monte do seu jeito.' !important; }
 @media(max-width:700px){.product-story{left:50%;width:100vw;transform:translateX(-50%)}.product-story__sticky{grid-template-columns:1fr;min-height:0;padding:42px 24px;gap:16px}.product-story__visual{min-height:390px}.product-story__visual img{width:min(390px,92vw);height:380px}.product-story__orb{inset:8% 11%}.product-story__ring{inset:14% 16%}}
+
+/* Responsive full-bleed surfaces and shared media geometry. */
+.store-header { position:relative; left:50%; width:100vw; margin:0; transform:translateX(-50%); border-radius:0; padding:18px max(16px,calc((100vw - 1120px) / 2)) 22px; }
+.store-header__inner { max-width:1120px; margin:0 auto; }
+.hero-art { aspect-ratio:3 / 2; min-height:0; height:auto; }
+.hero-art > img { display:block; width:100%; height:auto; object-fit:initial; }
+/* Coordinates sampled from cantinho-do-acai-hero.png (1536 × 1024). */
+.hero-hotspot { top:66.8%; bottom:auto; height:5.7%; display:block; }
+.hero-hotspot--menu { left:7.8%; width:15.7%; }.hero-hotspot--order { left:24.3%; width:14.6%; }
+.product-story__visual { display:grid; place-items:center; min-height:500px; }
+.product-story__media { position:relative; width:min(520px,100%); aspect-ratio:1; }
+.product-story__media > img { position:relative; z-index:2; display:block; width:100%; height:100%; object-fit:contain; object-position:center; border-radius:30px; overflow:clip; clip-path:inset(0 round 30px); }
+.product-story__media > .product-story__orb { position:absolute; z-index:0; left:50%; top:50%; width:116%; aspect-ratio:1; height:auto; inset:auto; transform:translate(-50%,-50%); border-radius:50%; }
+.product-story__media > .product-story__ring { position:absolute; z-index:1; left:50%; top:50%; width:108%; aspect-ratio:1; height:auto; inset:auto; transform:translate(-50%,-50%) rotate(18deg); border-radius:50%; }
+@media(max-width:700px){.store-header{padding:18px 16px 22px}.hero-hotspot{display:block}.product-story__visual{min-height:0}.product-story__media{width:min(520px,90vw)}.product-story__media>img{height:auto;aspect-ratio:1}}
 .orders-page{max-width:840px;margin:0 auto;padding:32px 18px 70px}.orders-page__header{margin:24px 0}.orders-page__header p{margin:0;color:var(--purple-700);font-weight:800}.orders-page__header h1{margin:4px 0;color:var(--purple-900)}.orders-page__header span{color:var(--muted)}.orders-list{display:grid;gap:12px}.order-card{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:18px;border:1px solid var(--border);border-radius:var(--radius-md);background:#fff;box-shadow:var(--shadow-sm)}.order-card p{margin:3px 0;color:var(--muted)}.order-card .button{justify-self:start}.order-card__status{padding:6px 10px;border-radius:999px;background:var(--purple-100);color:var(--purple-800);font-size:.82rem;font-weight:800}.orders-empty{text-align:center;margin-top:48px;padding:52px 20px;border:1px dashed var(--purple-300);border-radius:var(--radius-md);background:var(--purple-50)}.orders-empty span{font-size:48px}.orders-empty h2{color:var(--purple-900)}.orders-empty p{color:var(--muted);margin-bottom:20px}@media(max-width:520px){.order-card{grid-template-columns:1fr}.order-card__status{justify-self:start}}
 
