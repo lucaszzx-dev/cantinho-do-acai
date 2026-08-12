@@ -1,12 +1,13 @@
 import bcrypt from 'bcryptjs'
-import { randomUUID } from 'node:crypto'
-import { and, eq, isNull } from 'drizzle-orm'
+import { createHash, randomUUID } from 'node:crypto'
+import { and, eq, gt, isNull } from 'drizzle-orm'
 import { db } from './db/client.js'
-import { adminBackupCodes, adminUsers } from './db/schema.js'
+import { adminBackupCodes, adminSessions, adminUsers } from './db/schema.js'
 import { generateSecret, generateURI, verify } from 'otplib'
 
 export const adminCookie = 'cantinho_admin'
 export const adminPendingCookie = 'cantinho_admin_pending'
+const sessionTokenHash = (token: string) => createHash('sha256').update(token).digest('hex')
 
 export async function authenticateAdmin(email: string, password: string) { const [user] = await db.select().from(adminUsers).where(eq(adminUsers.email, email.toLowerCase())).limit(1); return user?.active && await bcrypt.compare(password, user.passwordHash) ? user : undefined }
 export async function createAdmin(name: string, email: string, password: string) { const passwordHash = await bcrypt.hash(password, 12); return db.insert(adminUsers).values({ id: randomUUID(), name, email: email.toLowerCase(), passwordHash }) }
@@ -23,8 +24,10 @@ export function parsePendingSession(value: string): { adminId: string; flow: 'en
 }
 
 export async function startMfaEnrollment(adminId: string, email: string) {
-  const secret = generateSecret()
-  await db.update(adminUsers).set({ mfaSecret: secret, mfaEnabled: false, updatedAt: new Date() }).where(eq(adminUsers.id, adminId))
+  const [admin] = await db.select({ secret: adminUsers.mfaSecret, enabled: adminUsers.mfaEnabled }).from(adminUsers).where(eq(adminUsers.id, adminId)).limit(1)
+  if (admin?.enabled) return undefined
+  const secret = admin?.secret ?? generateSecret()
+  if (!admin?.secret) await db.update(adminUsers).set({ mfaSecret: secret, mfaEnabled: false, updatedAt: new Date() }).where(eq(adminUsers.id, adminId))
   return generateURI({ issuer: 'Cantinho do Açaí', label: email, secret })
 }
 
@@ -54,4 +57,21 @@ export async function verifyMfaCode(adminId: string, token: string) {
     }
   }
   return false
+}
+
+export async function createAdminSession(adminId: string) {
+  const token = randomUUID()
+  await db.insert(adminSessions).values({ id: randomUUID(), adminId, tokenHash: sessionTokenHash(token), expiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000), mfaCompletedAt: new Date() })
+  return token
+}
+
+export async function getAdminSession(token: string) {
+  const [session] = await db.select().from(adminSessions).where(and(eq(adminSessions.tokenHash, sessionTokenHash(token)), isNull(adminSessions.revokedAt), gt(adminSessions.expiresAt, new Date()))).limit(1)
+  if (!session) return undefined
+  const [admin] = await db.select({ id: adminUsers.id, active: adminUsers.active }).from(adminUsers).where(eq(adminUsers.id, session.adminId)).limit(1)
+  return admin?.active ? { adminId: admin.id } : undefined
+}
+
+export async function revokeAdminSession(token: string) {
+  await db.update(adminSessions).set({ revokedAt: new Date() }).where(and(eq(adminSessions.tokenHash, sessionTokenHash(token)), isNull(adminSessions.revokedAt)))
 }

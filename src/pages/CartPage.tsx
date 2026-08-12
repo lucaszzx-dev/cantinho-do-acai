@@ -11,6 +11,10 @@ import { saveCustomerSession, type CustomerSession } from '../api/customer'
 import { createOrder } from '../api/orders'
 import { completePersistedOrder } from '../utils/orderFlow'
 import { getPaymentMethods, type PublicPaymentMethod } from '../api/payments'
+import { cartConfigurationLabels, orderItemPayload } from '../utils/cartConfiguration'
+import { PRODUCTS } from '../data/products'
+import { useCustomerSession } from '../context/CustomerContext'
+import { updateCustomerProfile } from '../api/customer'
 
 interface CartPageProps {
   onBack: () => void
@@ -35,6 +39,7 @@ function loadCustomer(): CustomerSession | null {
 
 export function CartPage({ onBack }: CartPageProps) {
   const { items, clearCart } = useCart()
+  const { customer: authenticatedCustomer, refresh: refreshCustomer } = useCustomerSession()
   const [customer, setCustomer] = useState<CustomerSession | null>(loadCustomer)
   const [checkout, setCheckout] = useState<CheckoutData>(() => ({ ...EMPTY_CHECKOUT, name: loadCustomer()?.name ?? '', phone: loadCustomer()?.phone ?? '' }))
   const [error, setError] = useState('')
@@ -47,6 +52,7 @@ export function CartPage({ onBack }: CartPageProps) {
   const total = cartTotal(items)
   const missing = Math.max(0, STORE.minOrder - total)
   const canFinalize = total >= STORE.minOrder
+  useEffect(() => { if (authenticatedCustomer) setCheckout((current) => ({ ...current, name: authenticatedCustomer.name, phone: authenticatedCustomer.phone, address: authenticatedCustomer.address?.address ?? current.address, number: authenticatedCustomer.address?.number ?? current.number, complement: authenticatedCustomer.address?.complement ?? current.complement, neighborhood: authenticatedCustomer.address?.neighborhood ?? current.neighborhood })) }, [authenticatedCustomer])
   useEffect(() => { getPaymentMethods().then(setPaymentMethods).catch((cause) => setPaymentsError(cause instanceof Error ? cause.message : 'Não foi possível carregar as formas de pagamento.')).finally(() => setPaymentsLoading(false)) }, [])
 
   const handleFinalize = async () => {
@@ -68,15 +74,9 @@ export function CartPage({ onBack }: CartPageProps) {
       return
     }
     setError(''); setSubmitting(true)
+    try { if (authenticatedCustomer) { await updateCustomerProfile({ name: checkout.name.trim(), phone: checkout.phone, address: { address: checkout.address, number: checkout.number, complement: checkout.complement || undefined, neighborhood: checkout.neighborhood } }); await refreshCustomer() } else { const session = await saveCustomerSession(checkout.name.trim(), checkout.phone); localStorage.setItem(CUSTOMER_KEY, JSON.stringify(session)); setCustomer(session) } } catch { if (authenticatedCustomer) { setError('Não foi possível salvar seus dados.'); setSubmitting(false); return } }
     try {
-      const session = await saveCustomerSession(checkout.name.trim(), checkout.phone)
-      localStorage.setItem(CUSTOMER_KEY, JSON.stringify(session))
-      setCustomer(session)
-    } catch {
-      // The order remains available when the convenience profile API is offline.
-    }
-    try {
-      const order = await createOrder({ idempotencyKey, customerId: customer?.id, customerName: checkout.name, phone: checkout.phone, address: checkout.address, addressNumber: checkout.number, complement: checkout.complement, neighborhood: checkout.neighborhood, notes: checkout.notes, paymentMethod: checkout.paymentMethod, needsChange: checkout.needsChange, changeForCents: checkout.changeForCents, items: items.map((item) => ({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, selections: item.selections })) })
+      const order = await createOrder({ idempotencyKey, customerId: authenticatedCustomer?.id ?? customer?.id, customerName: checkout.name, phone: checkout.phone, address: checkout.address, addressNumber: checkout.number, complement: checkout.complement, neighborhood: checkout.neighborhood, notes: checkout.notes, paymentMethod: checkout.paymentMethod, needsChange: checkout.needsChange, changeForCents: checkout.changeForCents, items: orderItemPayload(items) })
       const paymentLabel = paymentMethods.find((method) => method.id === checkout.paymentMethod)?.label ?? checkout.paymentMethod
       const message = `Pedido #${order.orderNumber}\n\n${buildOrderMessage(items, { ...checkout, paymentMethod: paymentLabel })}`
       completePersistedOrder(order, message, { openWhatsApp: (content) => window.open(buildWhatsAppLink(content), '_blank'), clearCart, navigate: (path) => window.location.assign(path) })
@@ -142,17 +142,18 @@ export function CartPage({ onBack }: CartPageProps) {
                   Revisão do pedido
                 </h3>
                 <ul className="order-review">
-                  {items.map((item) => (
-                    <li key={item.uid} className="order-review__row">
+                  {items.map((item) => {
+                    const configuration = cartConfigurationLabels(item, PRODUCTS.find((product) => product.id === item.productId))
+                    return <li key={item.uid} className="order-review__row">
                       <span className="order-review__name">
                         {item.quantity}x {item.productName}
-                        {item.variantName ? ` (${item.variantName})` : ''}
+                        {configuration.length > 0 && <small className="cart-line__extras">{configuration.join(' · ')}</small>}
                       </span>
                       <span className="order-review__price">
-                        {formatCurrency(item.unitPrice)}
+                        {formatCurrency(item.unitPrice * item.quantity)}
                       </span>
                     </li>
-                  ))}
+                  })}
                 </ul>
                 <div className="order-review__total">
                   <span>Total</span>

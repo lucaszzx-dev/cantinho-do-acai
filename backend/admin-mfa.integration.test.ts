@@ -16,7 +16,7 @@ const database = vi.hoisted(() => {
     return [{ id: code.id }]
     } }) }
   } })
-  const db = { select: query, update, insert: () => ({ values: async (values: typeof state.codes) => { state.codes.push(...values) } }) }
+  const db = { select: query, update, insert: () => ({ values: async (values: typeof state.codes | Record<string, unknown>) => { if (Array.isArray(values)) state.codes.push(...values) } }) }
   return { db: { ...db, transaction: async (callback: (tx: typeof db) => Promise<void>) => callback(db) } }
 })
 
@@ -34,6 +34,8 @@ describe('admin MFA real TOTP integration', () => {
     const pending = app.signCookie(Buffer.from(JSON.stringify({ adminId: state.admin.id, flow: 'enroll', nonce: 'nonce' })).toString('base64url'))
     const enrollment = await app.inject({ method: 'POST', url: '/api/admin/auth/mfa/enroll', headers: { cookie: `cantinho_admin_pending=${pending}` } })
     const secret = new URL(enrollment.json().otpauthUri).searchParams.get('secret')!
+    const repeatedEnrollment = await app.inject({ method: 'POST', url: '/api/admin/auth/mfa/enroll', headers: { cookie: `cantinho_admin_pending=${pending}` } })
+    expect(new URL(repeatedEnrollment.json().otpauthUri).searchParams.get('secret')).toBe(secret)
     const confirmation = await app.inject({ method: 'POST', url: '/api/admin/auth/mfa/enroll/confirm', headers: { cookie: `cantinho_admin_pending=${pending}` }, payload: { code: await generate({ secret }) } })
     expect(confirmation.statusCode).toBe(200); expect(confirmation.json().backupCodes).toHaveLength(10)
     const backupCode = confirmation.json().backupCodes[0]

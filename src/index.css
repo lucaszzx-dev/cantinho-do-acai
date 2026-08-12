@@ -1402,3 +1402,73 @@ textarea:focus-visible {
 
 .orders-page{max-width:840px;margin:0 auto;padding:32px 18px 70px}.orders-page__header{margin:24px 0}.orders-page__header p{margin:0;color:var(--purple-700);font-weight:800}.orders-page__header h1{margin:4px 0;color:var(--purple-900)}.orders-page__header span{color:var(--muted)}.orders-list{display:grid;gap:12px}.order-card{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:18px;border:1px solid var(--border);border-radius:var(--radius-md);background:#fff;box-shadow:var(--shadow-sm)}.order-card p{margin:3px 0;color:var(--muted)}.order-card .button{justify-self:start}.order-card__status{padding:6px 10px;border-radius:999px;background:var(--purple-100);color:var(--purple-800);font-size:.82rem;font-weight:800}.orders-empty{text-align:center;margin-top:48px;padding:52px 20px;border:1px dashed var(--purple-300);border-radius:var(--radius-md);background:var(--purple-50)}.orders-empty span{font-size:48px}.orders-empty h2{color:var(--purple-900)}.orders-empty p{color:var(--muted);margin-bottom:20px}@media(max-width:520px){.order-card{grid-template-columns:1fr}.order-card__status{justify-self:start}}
 
+/* Responsive storefront and payment settings: keep viewport-wide art from creating a scrollable x-axis. */
+html, body { overflow-x: clip; }
+
+/* The artwork is an intrinsic 3:2 asset: keep that ratio at every non-mobile width. */
+.hero-art, .hero-art > img { aspect-ratio: 3 / 2; }
+
+/* The 460px visual column was wider than the available tablet column. */
+@media (max-width: 900px) {
+  .product-story__sticky {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(24px, 4vw, 40px);
+    padding: clamp(32px, 5vw, 56px);
+  }
+
+  .product-story__visual,
+  .product-story__media { min-width: 0; }
+}
+
+@media (max-width: 700px) {
+  .product-story__sticky { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* The promotional art is desktop-first; the product content follows the header on phones. */
+@media (max-width: 600px) {
+  .hero-art { display: none; }
+}
+
+/* Payment rows retain their desktop columns, then become independent vertical cards on phones. */
+.admin-panel .admin-row:has(input[type='checkbox']) {
+  grid-template-columns: minmax(130px, .7fr) minmax(110px, .35fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.admin-panel .admin-row:has(input[type='checkbox']) label { min-width: 0; }
+.admin-panel .admin-row:has(input[type='checkbox']) input:not([type='checkbox']) {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 600px) {
+  .store-header__wa,
+  .store-header__inner > .button {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+  }
+  .store-header__inner > .button:last-child { flex-basis: 100%; }
+  .admin-page { padding-inline: 12px; }
+  .admin-header { flex-wrap: wrap; gap: 12px; }
+  .admin-header > div { min-width: 0; }
+  .admin-header .button { margin-left: auto; }
+  .admin-panel { padding: 14px; }
+  .admin-panel .admin-row:has(input[type='checkbox']) {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    margin-top: 14px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-alt);
+  }
+  .admin-panel .admin-row:has(input[type='checkbox']) label { width: 100%; }
+  .admin-panel .admin-row:has(input[type='checkbox']) input:not([type='checkbox']) {
+    width: 100%;
+    min-width: 0;
+  }
+}
+

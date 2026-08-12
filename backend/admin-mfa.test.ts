@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ authenticateAdmin: vi.fn(), verifyMfaCode: vi.fn() }))
+const mocks = vi.hoisted(() => ({ authenticateAdmin: vi.fn(), verifyMfaCode: vi.fn(), createAdminSession: vi.fn().mockResolvedValue('session-token'), getAdminSession: vi.fn(), revokeAdminSession: vi.fn() }))
 
 vi.mock('./admin-auth.js', async (importOriginal) => ({
   ...await importOriginal<typeof import('./admin-auth.js')>(),
   authenticateAdmin: mocks.authenticateAdmin,
   verifyMfaCode: mocks.verifyMfaCode,
+  createAdminSession: mocks.createAdminSession,
+  getAdminSession: mocks.getAdminSession,
+  revokeAdminSession: mocks.revokeAdminSession,
 }))
 vi.mock('./audit.js', () => ({ shouldWriteAdminAudit: vi.fn(() => false), writeAdminAudit: vi.fn() }))
 
@@ -51,6 +54,28 @@ describe('admin MFA login flow', () => {
     const login = await app.inject({ method: 'POST', url: '/api/admin/auth/login', payload: { email: admin.email, password: 'password-123' } })
     for (let attempt = 0; attempt < 5; attempt++) expect((await app.inject({ method: 'POST', url: '/api/admin/auth/mfa/verify', headers: { cookie: cookie(login) }, payload: { code: '000000' } })).statusCode).toBe(401)
     expect((await app.inject({ method: 'POST', url: '/api/admin/auth/mfa/verify', headers: { cookie: cookie(login) }, payload: { code: '000000' } })).statusCode).toBe(429)
+    await app.close()
+  })
+  it('revokes the signed server-side session and clears its cookie on logout', async () => {
+    const app = buildApp(repo); await app.ready()
+    const signedSession = app.signCookie('session-token')
+
+    const response = await app.inject({ method: 'POST', url: '/api/admin/auth/logout', headers: { cookie: `cantinho_admin=${signedSession}` } })
+
+    expect(response.statusCode).toBe(200)
+    expect(mocks.revokeAdminSession).toHaveBeenCalledWith('session-token')
+    expect(response.headers['set-cookie']).toContain('cantinho_admin=;')
+    await app.close()
+  })
+  it('rejects a copied cookie after its server-side session has been revoked', async () => {
+    mocks.getAdminSession.mockResolvedValueOnce({ adminId: admin.id }).mockResolvedValueOnce(undefined)
+    const app = buildApp(repo); await app.ready()
+    const signedSession = app.signCookie('session-token')
+
+    const authenticated = await app.inject({ method: 'GET', url: '/api/admin/auth/me', headers: { cookie: `cantinho_admin=${signedSession}` } })
+    expect(authenticated.statusCode).toBe(200)
+    expect(authenticated.headers['cache-control']).toBe('no-store, private')
+    expect((await app.inject({ method: 'GET', url: '/api/admin/orders', headers: { cookie: `cantinho_admin=${signedSession}` } })).statusCode).toBe(401)
     await app.close()
   })
 })
