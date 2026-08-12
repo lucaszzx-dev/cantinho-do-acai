@@ -2,19 +2,19 @@ import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import helmet from '@fastify/helmet'
 import rateLimit from '@fastify/rate-limit'
-import Fastify from 'fastify'
+import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify'
 import { z } from 'zod'
 import { env } from './env.js'
 import { postgresCatalogRepository, type CatalogRepository } from './catalog/repository.js'
-import { authenticateCustomer, createCustomerSession, getCustomer, registerCustomer } from './customers.js'
+import { authenticateCustomer, createCustomerSession, getCustomer, registerCustomer, updateCustomerProfile } from './customers.js'
 import { db } from './db/client.js'
 import { adminUsers, categories, optionGroups, orders, productOptions, products, productVariants, storeConfig } from './db/schema.js'
 import { asc, desc, eq, sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
-import { adminCookie, authenticateAdmin } from './admin-auth.js'
+import { adminCookie, adminPendingCookie, authenticateAdmin, confirmMfaEnrollment, createAdminSession, createPendingSession, getAdminSession, parsePendingSession, revokeAdminSession, startMfaEnrollment, verifyMfaCode } from './admin-auth.js'
 import { createOrder, getCustomerOrders, getOrder, getPublicOrder, orderStatuses, updateOrderStatus } from './orders.js'
 import { paymentMethodsSchema, publicPaymentMethods } from './payments.js'
-import { shouldWriteAdminAudit, writeAdminAudit } from './audit.js'
+import { adminAuditTarget, shouldWriteAdminAudit, writeAdminAudit } from './audit.js'
 
 export function buildApp(repository: CatalogRepository = postgresCatalogRepository) {
   const app = Fastify({ trustProxy: env.TRUST_PROXY_HOPS > 0 ? env.TRUST_PROXY_HOPS : false, logger: { level: process.env.LOG_LEVEL ?? 'info', redact: ['req.headers.authorization'] } })
@@ -24,23 +24,35 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
   app.register(cookie, { secret: env.ADMIN_SESSION_SECRET ?? 'development-only-change-me' })
   app.register(rateLimit, { global: false })
   const customerCookie = 'cantinho_customer'
+  const mfaAttempts = new Map<string, { count: number; resetAt: number }>()
+  const sessionCookieOptions = { httpOnly: true, sameSite: 'lax' as const, path: '/', secure: process.env.NODE_ENV === 'production', signed: true }
+  const pendingCookieOptions = { ...sessionCookieOptions, path: '/api/admin/auth/mfa', maxAge: 60 * 5 }
   app.addHook('onRequest', async (request, reply) => {
     const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
     const isProtectedMutation = request.url.startsWith('/api/admin/') || request.url.startsWith('/api/customers/')
     const origin = request.headers.origin
     if (isMutation && isProtectedMutation && origin && origin !== env.FRONTEND_ORIGIN) return reply.status(403).send({ error: 'invalid_origin' })
     if (!request.url.startsWith('/api/admin/') || request.url.startsWith('/api/admin/auth/')) return
-    const session = request.unsignCookie(request.cookies[adminCookie] ?? '')
-    if (!session.valid) return reply.status(401).send({ error: 'admin_unauthorized' })
-    const [admin] = await db.select({ id: adminUsers.id, active: adminUsers.active }).from(adminUsers).where(eq(adminUsers.id, session.value)).limit(1)
-    if (!admin?.active) { reply.clearCookie(adminCookie, { path: '/' }); return reply.status(401).send({ error: 'admin_unauthorized' }) }
-    request.headers['x-admin-id'] = session.value
+    const signed = request.unsignCookie(request.cookies[adminCookie] ?? '')
+    const session = signed.valid ? await getAdminSession(signed.value) : undefined
+    if (!session) { reply.clearCookie(adminCookie, { path: '/' }); return reply.status(401).send({ error: 'admin_unauthorized' }) }
+    request.headers['x-admin-id'] = session.adminId
+    reply.header('cache-control', 'no-store, private')
+  })
+  app.addHook('onRequest', async (request, reply) => {
+    const path = request.url.split('?')[0]
+    if (request.method !== 'POST' || !['/api/admin/auth/mfa/verify', '/api/admin/auth/mfa/enroll/confirm'].includes(path)) return
+    const key = `${path}:${request.ip}`; const now = Date.now(); const current = mfaAttempts.get(key)
+    if (!current || current.resetAt <= now) { mfaAttempts.set(key, { count: 1, resetAt: now + 5 * 60 * 1000 }); return }
+    if (current.count >= 5) return reply.status(429).send({ error: 'rate_limit_exceeded' })
+    current.count += 1
   })
   app.addHook('onResponse', async (request, reply) => {
     const adminId = request.headers['x-admin-id']
     const path = request.url.split('?')[0]
     if (!shouldWriteAdminAudit(request.method, path, reply.statusCode, adminId)) return
-    await writeAdminAudit({ adminId: adminId as string, action: request.method.toLowerCase(), entityType: path.split('/').slice(3, -1).join('/') || 'admin', entityId: path.split('/').at(-1), metadata: { path } })
+    const target = adminAuditTarget(path)
+    await writeAdminAudit({ adminId: adminId as string, action: request.method.toLowerCase(), ...target, metadata: { path } })
   })
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof z.ZodError) return reply.status(400).send({ error: 'invalid_request' })
@@ -69,11 +81,47 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
     const input = z.object({ email: z.string().email(), password: z.string().min(8) }).parse(request.body)
     const user = await authenticateAdmin(input.email, input.password)
     if (!user) return reply.status(401).send({ error: 'invalid_credentials' })
-    reply.setCookie(adminCookie, user.id, { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production', signed: true, maxAge: 60 * 60 * 8 })
-    return { id: user.id, name: user.name, email: user.email }
+    const next = user.mfaEnabled ? 'verify' : 'enroll'
+    reply.clearCookie(adminCookie, { path: '/' })
+    reply.setCookie(adminPendingCookie, createPendingSession(user.id, next), pendingCookieOptions)
+    return { next }
   })
-  app.post('/api/admin/auth/logout', async (_request, reply) => { reply.clearCookie(adminCookie, { path: '/' }); return { ok: true } })
-  app.get('/api/admin/auth/me', async (request, reply) => { const session = request.unsignCookie(request.cookies[adminCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'admin_unauthorized' }); return { id: session.value } })
+  const getPending = (request: FastifyRequest, reply: FastifyReply, requiredFlow: 'enroll' | 'verify') => {
+    const signed = request.unsignCookie(request.cookies[adminPendingCookie] ?? '')
+    const pending = signed.valid ? parsePendingSession(signed.value) : undefined
+    if (!pending || pending.flow !== requiredFlow) { reply.status(401).send({ error: 'mfa_pending_unauthorized' }); return undefined }
+    return pending
+  }
+  app.post('/api/admin/auth/mfa/enroll', async (request, reply) => {
+    const pending = getPending(request, reply, 'enroll')
+    if (!pending) return
+    const [admin] = await db.select({ email: adminUsers.email, active: adminUsers.active, enabled: adminUsers.mfaEnabled }).from(adminUsers).where(eq(adminUsers.id, pending.adminId)).limit(1)
+    if (!admin?.active || admin.enabled) return reply.status(401).send({ error: 'mfa_pending_unauthorized' })
+    const otpauthUri = await startMfaEnrollment(pending.adminId, admin.email)
+    return otpauthUri ? { otpauthUri } : reply.status(401).send({ error: 'mfa_pending_unauthorized' })
+  })
+  app.post('/api/admin/auth/mfa/enroll/confirm', { config: { rateLimit: { max: 5, timeWindow: '5 minutes' } } }, async (request, reply) => {
+    const pending = getPending(request, reply, 'enroll')
+    if (!pending) return
+    const { code } = z.object({ code: z.string().regex(/^\d{6}$/) }).parse(request.body)
+    const backupCodes = await confirmMfaEnrollment(pending.adminId, code)
+    if (!backupCodes) { await writeAdminAudit({ adminId: pending.adminId, action: 'mfa_enrollment_verification_failed', entityType: 'admin_user', entityId: pending.adminId }); return reply.status(401).send({ error: 'invalid_mfa_code' }) }
+    await writeAdminAudit({ adminId: pending.adminId, action: 'mfa_enrolled', entityType: 'admin_user', entityId: pending.adminId })
+    reply.clearCookie(adminPendingCookie, { path: '/api/admin/auth/mfa' })
+    reply.setCookie(adminCookie, await createAdminSession(pending.adminId), { ...sessionCookieOptions, maxAge: 60 * 60 * 8 })
+    return { backupCodes }
+  })
+  app.post('/api/admin/auth/mfa/verify', { config: { rateLimit: { max: 5, timeWindow: '5 minutes' } } }, async (request, reply) => {
+    const pending = getPending(request, reply, 'verify')
+    if (!pending) return
+    const { code } = z.object({ code: z.string().min(6).max(32) }).parse(request.body)
+    if (!await verifyMfaCode(pending.adminId, code)) { await writeAdminAudit({ adminId: pending.adminId, action: 'mfa_verification_failed', entityType: 'admin_user', entityId: pending.adminId }); return reply.status(401).send({ error: 'invalid_mfa_code' }) }
+    reply.clearCookie(adminPendingCookie, { path: '/api/admin/auth/mfa' })
+    reply.setCookie(adminCookie, await createAdminSession(pending.adminId), { ...sessionCookieOptions, maxAge: 60 * 60 * 8 })
+    return { ok: true }
+  })
+  app.post('/api/admin/auth/logout', async (request, reply) => { const signed = request.unsignCookie(request.cookies[adminCookie] ?? ''); if (signed.valid) await revokeAdminSession(signed.value); reply.clearCookie(adminCookie, { path: '/' }); return { ok: true } })
+  app.get('/api/admin/auth/me', async (request, reply) => { const signed = request.unsignCookie(request.cookies[adminCookie] ?? ''); const session = signed.valid ? await getAdminSession(signed.value) : undefined; if (!session) return reply.status(401).send({ error: 'admin_unauthorized' }); reply.header('cache-control', 'no-store, private'); return { id: session.adminId } })
   const productInput = z.object({ name: z.string().min(2), slug: z.string().min(2), categoryId: z.string().min(1), description: z.string().optional(), image: z.string().optional(), active: z.boolean().default(true), sortOrder: z.number().int().nonnegative().default(0), price: z.number().nonnegative(), fromPrice: z.boolean().default(false) })
   app.get('/api/admin/products', async () => db.select().from(products).orderBy(asc(products.sortOrder)))
   app.get('/api/admin/orders', async () => db.select().from(orders).orderBy(desc(orders.createdAt)).limit(100))
@@ -128,10 +176,11 @@ export function buildApp(repository: CatalogRepository = postgresCatalogReposito
     return reply.status(200).send({ id: customer.id, name: customer.name, phone: customer.phone })
   })
   const customerAuthInput = z.object({ name: z.string().trim().min(2).max(100), phone: z.string().min(8).max(30), email: z.string().email(), password: z.string().min(8).max(128) })
-  app.post('/api/customers/auth/register', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => { try { const input = customerAuthInput.parse(request.body); const customer = await registerCustomer(input.name, input.phone, input.email, input.password); reply.setCookie(customerCookie, customer.id, { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production', signed: true, maxAge: 60 * 60 * 24 * 30 }); return reply.status(201).send({ id: customer.id, name: customer.name, phone: customer.phone, email: customer.email }) } catch (error) { if (error instanceof Error && error.message === 'E-mail já cadastrado.') return reply.status(409).send({ error: 'email_taken' }); throw error } })
+  app.post('/api/customers/auth/register', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => { try { const input = customerAuthInput.parse(request.body); const customer = await registerCustomer(input.name, input.phone, input.email, input.password); reply.setCookie(customerCookie, customer.id, { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production', signed: true, maxAge: 60 * 60 * 24 * 30 }); return reply.status(201).send({ id: customer.id, name: customer.name, phone: customer.phone, email: customer.email }) } catch (error) { if (error instanceof Error && error.message === 'E-mail já cadastrado.') return reply.status(201).send({ message: 'Cadastro recebido. Se já existe uma conta com esse e-mail, faça login normalmente.' }); throw error } })
   app.post('/api/customers/auth/login', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (request, reply) => { const input = z.object({ email: z.string().email(), password: z.string().min(8).max(128) }).parse(request.body); const customer = await authenticateCustomer(input.email, input.password); if (!customer) return reply.status(401).send({ error: 'invalid_credentials' }); reply.setCookie(customerCookie, customer.id, { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production', signed: true, maxAge: 60 * 60 * 24 * 30 }); return { id: customer.id, name: customer.name, phone: customer.phone, email: customer.email } })
   app.post('/api/customers/auth/logout', async (_request, reply) => { reply.clearCookie(customerCookie, { path: '/' }); return { ok: true } })
-  app.get('/api/customers/auth/me', async (request, reply) => { const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'customer_unauthorized' }); const customer = await getCustomer(session.value); return customer ? { id: customer.id, name: customer.name, phone: customer.phone, email: customer.email } : reply.status(401).send({ error: 'customer_unauthorized' }) })
+  app.get('/api/customers/auth/me', async (request, reply) => { const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'customer_unauthorized' }); const customer = await getCustomer(session.value); return customer ? { id: customer.id, name: customer.name, phone: customer.phone, email: customer.email, address: customer.address } : reply.status(401).send({ error: 'customer_unauthorized' }) })
+  app.patch('/api/customers/me', async (request, reply) => { const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'customer_unauthorized' }); const input = z.object({ name: z.string().trim().min(2).max(100), phone: z.string().min(8).max(30), address: z.object({ address: z.string().trim().min(2).max(200), number: z.string().trim().min(1).max(20), complement: z.string().trim().max(100).optional(), neighborhood: z.string().trim().min(2).max(100) }) }).parse(request.body); const customer = await updateCustomerProfile(session.value, input); return { id: customer.id, name: customer.name, phone: customer.phone, email: customer.email, address: customer.address } })
   app.get('/api/customers/me/orders', async (request, reply) => { const session = request.unsignCookie(request.cookies[customerCookie] ?? ''); if (!session.valid) return reply.status(401).send({ error: 'customer_unauthorized' }); return getCustomerOrders(session.value) })
   app.get('/api/products/:slug', async (request, reply) => {
     const { slug } = z.object({ slug: z.string().min(1) }).parse(request.params)

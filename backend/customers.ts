@@ -22,6 +22,11 @@ export async function getCustomer(id: string) {
   return customer
 }
 
+export async function updateCustomerProfile(id: string, input: { name: string; phone: string; address: { address: string; number: string; complement?: string; neighborhood: string } }) {
+  const [customer] = await db.update(customers).set({ name: input.name, phone: normalizePhone(input.phone), address: input.address, updatedAt: new Date() }).where(eq(customers.id, id)).returning()
+  return customer
+}
+
 export async function registerCustomer(name: string, phone: string, email: string, password: string) {
   const normalizedPhone = normalizePhone(phone)
   const normalizedEmail = email.toLowerCase()

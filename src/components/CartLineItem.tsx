@@ -5,21 +5,13 @@ import { itemSubtotal } from '../utils/cart'
 import { PRODUCTS } from '../data/products'
 import { productImageFor } from '../data/productImages'
 import { ProductImage } from './ProductImage'
+import { cartConfigurationLabels } from '../utils/cartConfiguration'
 
 export function CartLineItem({ item }: { item: CartItem }) {
   const { increaseQuantity, decreaseQuantity, removeItem } = useCart()
   const product = PRODUCTS.find((p) => p.id === item.productId)
 
-  const optionLabels: string[] = []
-  if (item.variantName) optionLabels.push(item.variantName)
-  for (const [groupId, ids] of Object.entries(item.selections)) {
-    const group = product?.optionGroups.find((g) => g.id === groupId)
-    if (!group) continue
-    for (const id of ids) {
-      const opt = group.options.find((o) => o.id === id)
-      if (opt) optionLabels.push(opt.name)
-    }
-  }
+  const optionLabels = cartConfigurationLabels(item, product)
 
   return (
     <li className="cart-line">

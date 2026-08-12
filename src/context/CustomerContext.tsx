@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { apiRequest } from '../api/client'
 
-export type Customer = { id: string; name: string; phone: string; email?: string }
+export type Customer = { id: string; name: string; phone: string; email?: string; address?: { address: string; number: string; complement?: string; neighborhood: string } }
 type CustomerState = { status: 'loading' | 'authenticated' | 'anonymous' | 'error'; customer: Customer | null; refresh: () => Promise<void>; logout: () => Promise<void> }
 const CustomerContext = createContext<CustomerState | null>(null)
 

@@ -3,7 +3,7 @@ import { buildApp } from './app.js'
 import type { CatalogRepository } from './catalog/repository.js'
 import { PRODUCTS } from '../src/data/products'
 import { normalizePhone } from './customers.js'
-import { shouldWriteAdminAudit, writeAdminAudit } from './audit.js'
+import { adminAuditTarget, shouldWriteAdminAudit, writeAdminAudit } from './audit.js'
 
 const product = { id: 'acai', slug: 'acai', name: 'Açaí', category: 'monte-seu-acai', available: true, price: 17.9, fromPrice: true, variants: [{ id: '300ml', name: '300ml', price: 17.9 }], optionGroups: [{ id: 'extras', label: 'Extras', type: 'multi', required: false, options: [{ id: 'bis', name: 'Bis', price: 3 }] }] }
 const repo: CatalogRepository = { getStore: async () => ({ name: 'Cantinho' }), getCategories: async () => [{ id: 'monte-seu-acai', name: 'Monte Seu Açaí' }], getProducts: async () => [product], getProductBySlug: async (slug) => slug === 'acai' ? product : undefined }
@@ -61,5 +61,8 @@ describe('admin audit log', () => {
     expect(values).toHaveBeenCalledOnce()
     expect(shouldWriteAdminAudit('PATCH', '/api/admin/orders/order-1/status', 409, 'admin-1')).toBe(false)
     expect(database.insert).toHaveBeenCalledOnce()
+  })
+  it('identifies the order itself as the audited resource for a status change', () => {
+    expect(adminAuditTarget('/api/admin/orders/order-1/status')).toEqual({ entityType: 'orders', entityId: 'order-1' })
   })
 })
